@@ -342,7 +342,7 @@ TDirectory *TCvsInterfacePserver::AllocateDir (TDirectory * rootdir,
     if (pos != std::string::npos)
     {
       dirpart.erase (pos);
-      directory.erase (0, pos);
+      directory.erase (0, pos + 1);
     }
     else
       directory = "";

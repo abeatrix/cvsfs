@@ -1,3 +1,20 @@
+2002-08-20  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TCvsInterfacePserver (AllocateDir): size was short by one
+	* Bugfix release 1.1.1 which fixes only the bug above.
+
+2002-08-19  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/dir.c (cvsfs_lookup): Bugfix: return NULL if file not found
+	* cvsfs/dir.c (cvsfs_mkdir): new - allow directory creation
+	* cvsfs/proc.c (cvsfs_create_dir): new - send 'mkdir' to daemon
+	* cvsfs/dir.c (cvsfs_rmdir): new - allow directory deletion
+	* cvsfs/proc.c (cvsfs_remove_dir): new - send 'rmdir' to daemon
+	* cvsfsd/TModuleActionMkdir.cpp: new - daemon interface for 'mkdir'
+	* cvsfsd/TModuleActionRmdir.cpp: new - daemon interface for 'rmdir'
+	* cvsfsd: implement mkdir and rmdir functionality for local files
+
+2002-08-18  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.0
+	
 2002-08-17  Petric Frank  <pfrank@gmx.de>
 	* cvsfs/init: New subproject to support init scripts.
 	* cvsfs/Makefile.am: Add subproject 'init'
