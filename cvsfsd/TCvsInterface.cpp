@@ -24,7 +24,7 @@
 
 
 TCvsInterface::TCvsInterface ()
-: fRootDir ("/"), fTreeLoaded (false)
+: fRootDir (0), fTreeLoaded (false), fCacheManager ("/var/cache/cvsfs")
 {
 }
 

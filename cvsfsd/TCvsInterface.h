@@ -19,6 +19,7 @@
 #define __TCVSINTERFACE_H__
 
 #include "TDirectory.h"
+#include "TCacheManager.h"
 
 // forward references
 class TEntry;
@@ -53,10 +54,15 @@ class TCvsInterface
     virtual int RemoveDirectory (const std::string &, const std::string &) = 0;
     virtual const TEntry * MakeFile (const std::string &, const std::string &, int) = 0;
     virtual int RemoveFile (const std::string &, const std::string &) = 0;
+    virtual int TruncateFile (const std::string &, const std::string &) = 0;
+    virtual int Invalidate (const std::string &, const std::string &) = 0;
+    virtual int GetLocation (const std::string &, const std::string &, std::string &) = 0;
+    virtual int Checkout (const std::string &, const std::string &) = 0;
 
   protected:
-    TDirectory	fRootDir;
-    bool	fTreeLoaded;
+    TDirectory		*fRootDir;
+    bool		fTreeLoaded;
+    TCacheManager	fCacheManager;
 };
 
 

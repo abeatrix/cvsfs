@@ -21,12 +21,15 @@
 #include "TCvsInterface.h"
 #include "TCvsConnectionPserver.h"
 #include "TMountParameters.h"
-#include "TCacheVersionedFiles.h"
-#include "TCacheWorkFiles.h"
+//#include "TCacheVersionedFiles.h"
+//#include "TCacheWorkFiles.h"
 
 // forward references
 class TFile;
 class TVersionedFile;
+class TCacheSystemVersioned;
+class TCacheSystemCheckedout;
+class TCacheSystemSimple;
 
 // This class implements the interface to a direct pserver communication
 // to a cvs server.
@@ -45,6 +48,10 @@ class TCvsInterfacePserver : public TCvsInterface
     virtual int RemoveDirectory (const std::string &, const std::string &);
     virtual const TEntry * MakeFile (const std::string &, const std::string &, int);
     virtual int RemoveFile (const std::string &, const std::string &);
+    virtual int TruncateFile (const std::string &, const std::string &);
+    virtual int Invalidate (const std::string &, const std::string &);
+    virtual int GetLocation (const std::string &, const std::string &, std::string &);
+    virtual int Checkout (const std::string &, const std::string &);
 
   private:
     typedef enum
@@ -63,8 +70,12 @@ class TCvsInterfacePserver : public TCvsInterface
     } CoResult;
 
     TCvsConnectionPserver	fConnection;
-    TCacheVersionedFiles	fVersionedCache;
-    TCacheWorkFiles		fWorkCache;
+    TDirectory			fCvsDir;
+    TCacheSystemVersioned	*fRemote;
+    TCacheSystemCheckedout	*fCheckedOut;
+    TCacheSystemSimple		*fLocal;
+//    TCacheVersionedFiles	fVersionedCache;
+//    TCacheWorkFiles		fWorkCache;
 
     bool LoadTree ();
     bool LoadCvsTree ();
@@ -80,8 +91,8 @@ class TCvsInterfacePserver : public TCvsInterface
     int ConvertTime (const std::string &) const;
     int ConvertAttr (const std::string &) const;
 
-    int LoadFile (const std::string &, const std::string &, TVersionedFile &, long long, int, char *);
-    TDirectory *GetParentDirectory (const std::string &, std::string &);
+    const TFile * LoadFile (const std::string &, const std::string &, TVersionedFile &);
+    TDirectory * GetParentDirectory (const std::string &, std::string &);
 };
 
 

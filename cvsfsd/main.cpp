@@ -30,6 +30,8 @@
 #include "TModuleActionRmdir.h"
 #include "TModuleActionMkfile.h"
 #include "TModuleActionRmfile.h"
+#include "TModuleActionTruncfile.h"
+#include "TModuleActionIoctl.h"
 #include "TModuleActionQuit.h"
 #include "TCvsInterfacePserver.h"
 #include "TSyslog.h"
@@ -98,14 +100,12 @@ main(int argc, char *argv[])
 
       *ptr = '\0';
 
-      // id retrieved - start daemon
+      // id evaluated - start daemon
       if (strlen (name) > 0)
       {
         std::string command = argv[0];
 
         command += std::string (" ") + name + " &";
-
-//        log->info << "cvsfsd: daemon id " << name << " started." << std::endl;
 
         system (command.c_str ());
       }
@@ -131,6 +131,13 @@ main(int argc, char *argv[])
       default:
         id = atoi (argv[1]);
 
+        if (id <= 0)
+        {
+          log->error << "Unsupported id '" << argv[1] << "' given - aborted" << std::endl;
+
+	  exit (1);
+        }
+
         sprintf (name, "/dev/cvsfs/%i", id);
   
         server = new TModuleServer (name);
@@ -146,6 +153,8 @@ main(int argc, char *argv[])
     server->AddAction ("rmdir", new TModuleActionRmdir);
     server->AddAction ("mkfile", new TModuleActionMkfile);
     server->AddAction ("rmfile", new TModuleActionRmfile);
+    server->AddAction ("truncfile", new TModuleActionTruncfile);
+    server->AddAction ("ioctl", new TModuleActionIoctl);
 
     log->info << "Starting mount daemon (" << argv[1] << ") ..." << std::endl;
 
@@ -153,10 +162,10 @@ main(int argc, char *argv[])
     {
       TCvsInterfacePserver interface (server->parameters ());
 			       
-      if (interface.Test ())
-        server->run (interface);
-      else
+      if (!interface.Test ())
         log->error << "Can not login to server " << server->parameters ()["server"] << std::endl;
+
+      server->run (interface);
     }
     else
       log->error << "Device " << name << " can not be opened." << std::endl;

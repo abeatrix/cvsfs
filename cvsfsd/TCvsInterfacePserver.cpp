@@ -30,17 +30,29 @@
 #include "TVersionedFile.h"
 #include "TMountParameters.h"
 #include "TCvsSession.h"
-#include "TCachedFile.h"
+//#include "TCachedFile.h"
+#include "TCacheSystemCheckedout.h"
+#include "TCacheSystemSimple.h"
+#include "TCacheSystemVersioned.h"
 #include "TSyslog.h"
 #include "XPserverTimeout.h"
 
 
 
+const std::string Slash = "/";
+
+
 TCvsInterfacePserver::TCvsInterfacePserver (const TMountParameters & parms)
-: TCvsInterface (), fConnection (parms),
-  fVersionedCache ("/var/cache/cvsfs", fConnection.GetServer (), fConnection.GetRoot ()),
-  fWorkCache ("/var/cache/cvsfs", fConnection.GetMountPoint ())
+: TCvsInterface (), fConnection (parms), fCvsDir ("/"),
+  fRemote (new TCacheSystemVersioned (Slash + fConnection.GetServer () + fConnection.GetRoot ())),
+  fCheckedOut (new TCacheSystemCheckedout (fConnection.GetMountPoint ())),
+  fLocal (new TCacheSystemSimple (fConnection.GetMountPoint (), false))
 {
+  // the sequence of adding is important !
+  // the later added caches overlap the earlier ones.
+  fCacheManager.AddCache (fRemote);
+  fCacheManager.AddCache (fCheckedOut);
+  fCacheManager.AddCache (fLocal);
 }
 
 
@@ -80,7 +92,7 @@ const TEntry * TCvsInterfacePserver::GetEntry (const std::string & path, int ind
     else
       fullpath = fConnection.GetProject () + path;
 
-  const TEntry *entry = FindEntry (&fRootDir, fullpath);
+  const TEntry *entry = FindEntry (fRootDir, fullpath);
   if ((entry == 0) || (entry->isA () != TEntry::DirEntry))
     return 0;
 
@@ -107,7 +119,7 @@ const TEntry * TCvsInterfacePserver::GetFullEntry (const std::string & path,
   else
     fullpath = fConnection.GetProject () + path;
 
-  TEntry *entry = FindEntry (&fRootDir, fullpath);
+  TEntry *entry = FindEntry (fRootDir, fullpath);
 
   if (entry != 0)
   {
@@ -180,23 +192,23 @@ const TEntry * TCvsInterfacePserver::MakeDirectory (const std::string & path,
   else
     fullpath = fConnection.GetProject () + path;
 
-  TEntry *entry = FindEntry (&fRootDir, fullpath);
+  TEntry *entry = FindEntry (fRootDir, fullpath);
   if (entry)
     return 0;
 
-  if (!fWorkCache.MakeDirectory (fullpath, mode))
+  if (!fLocal->CreateDirectory (fullpath, mode))
     return 0;
 
-  TDirectory * dir = AllocateDir (&fRootDir, fullpath);
+  TDirectory * dir = AllocateDir (fRootDir, fullpath);
   if (dir)
   {
     TFileData dummy;
 
-    if (!fWorkCache.FileData (fullpath, dummy))
+    if (!fLocal->FileAttribute (fullpath, dummy))
       return 0;
 
     dir->SetData (dummy);
-    dir->SetSource (TEntry::Local);
+    dir->SetLayer (fLocal->GetLayer ());
   }
 
   return dir;
@@ -220,7 +232,7 @@ int TCvsInterfacePserver::RemoveDirectory (const std::string & path,
   else
     fullpath = fConnection.GetProject () + path;
 
-  TEntry *entry = FindEntry (&fRootDir, fullpath);
+  TEntry *entry = FindEntry (fRootDir, fullpath);
 
   if (entry == 0)
     return ENOENT;
@@ -228,10 +240,10 @@ int TCvsInterfacePserver::RemoveDirectory (const std::string & path,
   if (entry->isA () != TEntry::DirEntry)
     return ENOTDIR;
 
-  if (entry->GetSource () != TEntry::Local)
+  if (entry->GetLayer () != fLocal->GetLayer ())
     return EROFS;
 
-  int retval = fWorkCache.RemoveDirectory (fullpath);
+  int retval = fLocal->DeleteDirectory (fullpath);
 
   if (retval == 0)
     RemoveEntry (fullpath);
@@ -265,7 +277,7 @@ const TEntry * TCvsInterfacePserver::MakeFile (const std::string & path,
     return 0;
 
   // allocate the file in the working cache (with size = 0)
-  if (!fWorkCache.MakeFile (fullpath, mode))
+  if (!fLocal->CreateFile (fullpath, mode))
     return 0;
 
   TFile *file = new TFile (filename, "");
@@ -275,7 +287,7 @@ const TEntry * TCvsInterfacePserver::MakeFile (const std::string & path,
   // add the file to the tree info
   TFileData dummy;
 
-  if (!fWorkCache.FileData (fullpath, dummy))
+  if (!fLocal->FileAttribute (fullpath, dummy))
   {
     delete file;
 
@@ -283,7 +295,7 @@ const TEntry * TCvsInterfacePserver::MakeFile (const std::string & path,
   }
 
   file->SetData (dummy);
-  file->SetSource (TEntry::Local);
+  file->SetLayer (fLocal->GetLayer ());
 
   dir->AddEntry (file);
 
@@ -321,15 +333,75 @@ int TCvsInterfacePserver::RemoveFile (const std::string & path,
   if (entry->isA () == TEntry::DirEntry)
     return EISDIR;
 
-  if (entry->GetSource () != TEntry::Local)
+  if (entry->GetLayer () == fRemote->GetLayer ())
     return EROFS;
 
-  int retval = fWorkCache.RemoveFile (fullpath);
+  if (!fCacheManager.DeleteFile (entry->GetLayer (), fullpath))
+    return ENOENT;
 
-  if (retval == 0)
-    dir->RemoveEntry (entry);
+  dir->RemoveEntry (entry);
 
-  return retval;
+  // has the deleted file hidden a remote version ?
+  entry = FindEntry (&fCvsDir, fullpath);
+  if (entry)
+    dir->AddEntry (entry->Clone ());	// then bring it back to front
+
+  return 0;
+}
+
+
+
+
+int TCvsInterfacePserver::TruncateFile (const std::string & path,
+				        const std::string & version)
+{
+  if (!LoadTree ())
+    return 0;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  std::string filename;
+
+  TDirectory *dir = GetParentDirectory (fullpath, filename);
+  if (!dir)
+    return ENOENT;	// parent directory not found
+
+  TEntry *entry = dir->FindEntry (filename);
+  if (entry == 0)
+    return ENOENT;
+
+  if (entry->isA () == TEntry::DirEntry)
+    return EISDIR;
+
+  if (entry->GetLayer () == fRemote->GetLayer ())
+    return EROFS;
+
+  if (entry->isA () == TEntry::FileEntry)
+  {
+    TFile * file = static_cast<TFile *> (entry);
+
+    if (!fCacheManager.CreateFile (entry->GetLayer (), fullpath,
+                                   file->GetData ().GetAttribute ()))
+      return ENOENT;
+
+    TFileData dummy;
+
+    if (!fCacheManager.FileAttribute (entry->GetLayer (), fullpath, dummy))
+      return ENOENT;
+
+    // update the file data
+    file->SetData (dummy);
+  }
+
+  return 0;
 }
 
 
@@ -353,36 +425,50 @@ int TCvsInterfacePserver::GetFile (const std::string & path,
   else
     fullpath = fConnection.GetProject () + path;
 
-  TEntry *entry = FindEntry (&fRootDir, fullpath);
+  TEntry *entry = FindEntry (fRootDir, fullpath);
 
-  if (entry == 0)
+  if (!entry)
     return -1;		// file not known
 
   if (entry->isA () != TEntry::DirEntry)
   {
+    const TFile *f;
+
     if (entry->isA () == TEntry::VersionedFileEntry)
     {
       TVersionedFile *file = static_cast<TVersionedFile *> (entry);
 
-      if (file->FindVersion (version) == 0)
-        if (!LoadAttribute (fullpath, version, *file))
-          return 0;
+//      if ((f = file->FindVersion (version)) == 0)	
+//        if (!LoadAttribute (fullpath, version, *file))
+//          return 0;
 
-        return LoadFile (fullpath, version, *file, start, count, buffer);
+      // load file from cvs server if necessary and store it in cache
+      if ((f = LoadFile (fullpath, version, *file)) == 0)
+        return 0;
     }
-    else
-      if (entry->GetSource () == TEntry::Local)
-      {
-        TCachedFile *file = fWorkCache.CachedFile (fullpath);
-        if (file)
-        {
-          count = file->ReadFile (buffer, start, count);
+    else		// standard locally edited file
+      f = static_cast<TFile *> (entry);
 
-          delete file;
+    if (f->GetVersion ().length () != 0)
+    {
+      fullpath += "@@";
+      fullpath += f->GetVersion ();
+    }
 
-          return count;
-        }
-      }
+    std::ifstream *in = fCacheManager.In (f->GetLayer (), fullpath);
+    if (in)
+    {
+      if (start != 0)
+        in->seekg (start, std::istream::beg);
+
+      in->read (buffer, count);
+
+      count = in->gcount ();
+
+      delete in;
+
+      return count;
+    }
   }
 
   return -1;	// file not known
@@ -408,49 +494,118 @@ int TCvsInterfacePserver::PutFile (const std::string & path,
   else
     fullpath = fConnection.GetProject () + path;
 
-  TEntry *entry = FindEntry (&fRootDir, fullpath);
+  TEntry *entry = FindEntry (fRootDir, fullpath);
 
   if (entry == 0)
     return ENOENT;		// file not known
 
-  if (entry->GetSource () != TEntry::Local)
-    return EROFS;
+  if (entry->GetLayer () == fRemote->GetLayer ())
+    return EROFS;	// CVS not direct writeable
 
   if (entry->isA () != TEntry::FileEntry)
     return EISDIR;
 
-  TCachedFile *file = fWorkCache.CachedFile (fullpath);
-  if (!file)
-    return ENOMEM;
+  TFile *changedFile = static_cast<TFile *> (entry);
 
-  std::ostream *f = file->OpenForWrite (ios::binary);
+  if (changedFile->GetVersion ().length () != 0)
+  {
+    fullpath += "@@";
+    fullpath += changedFile->GetVersion ();
+  }
+
+  std::ostream * f = fCacheManager.Out (entry->GetLayer (), fullpath,
+					std::ios::binary | std::ios::ate);
   if (!f)		// can not open file ?
   {
-    delete file;
+    delete f;
 
     return ENOENT;
   }
 
-  if (start != 0)
-    f->seekp (start);
-
+  f->seekp (start);
   f->write (buffer, count);
 
   delete f;
-  delete file;
 
   // now the info in the file entry must be updated
+  // Todo: handle this by an 'invalid'-flag in TEntry class
   TFileData newdata;
 
-  if (!fWorkCache.FileData (fullpath, newdata))
+  if (!fCacheManager.FileAttribute (entry->GetLayer (), fullpath, newdata))
     return ENOENT;
-
-  TFile *changedFile = static_cast<TFile *> (entry);
 
   changedFile->SetData (newdata);
 
-  return 0;	// file not known
+  return 0;	// everything ok
 }
+
+
+
+int TCvsInterfacePserver::Invalidate (const std::string & path,
+				      const std::string & version)
+{
+  return 0;
+}
+
+
+
+int TCvsInterfacePserver::GetLocation (const std::string & path,
+				       const std::string & version,
+				       std::string & location)
+{
+  if (!LoadTree ())
+    return EIO;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  TEntry *entry = FindEntry (fRootDir, fullpath);
+  if (!entry)
+    return ENOENT;
+
+  if (entry->GetLayer () == fLocal->GetLayer ())
+    location = "";
+  else
+    if (entry->GetLayer () == fCheckedOut->GetLayer ())
+    {
+      TFile *f = static_cast<TFile *> (entry);
+
+      location = "Checked out from ";
+      location += f->GetVersion ();
+    }
+    else
+      if (version.length () == 0)
+      {
+        TVersionedFile *f = static_cast<TVersionedFile *> (entry);
+
+        location = f->GetHeadVersion ();
+      }
+      else
+        location = version;
+
+  return 0;	// everything went ok
+}
+
+
+
+int TCvsInterfacePserver::Checkout (const std::string & path,
+				    const std::string & version)
+{
+  return 0;
+}
+
+
+
+/***************************************************************
+ **  The supporting methods                                   **
+ ***************************************************************/
 
 
 
@@ -462,7 +617,18 @@ bool TCvsInterfacePserver::LoadTree ()
   if (!LoadCvsTree ())
     return false;
 
-  return fWorkCache.LoadTree (fRootDir);
+  if (fRootDir)
+    delete fRootDir;
+
+  fRootDir = new TDirectory (fCvsDir);
+  if (!fRootDir)
+  {
+    fTreeLoaded = false;
+
+    return false;
+  }
+
+  return fCacheManager.LoadTree (*fRootDir);
 }
 
 
@@ -518,11 +684,12 @@ bool TCvsInterfacePserver::LoadCvsTree ()
           break;
 
         case RDIFF_DIR:
-	  dir = AllocateDir (&fRootDir, name);
+	  dir = AllocateDir (&fCvsDir, name);
           if (name == ".")
             basedir = "";
           else
             basedir = name;
+          dir->SetLayer (fRemote->GetLayer ());
 
           log->debug << "Directory: " << name << std::endl;
           break;
@@ -602,7 +769,7 @@ void TCvsInterfacePserver::RemoveEntry (const std::string & path)
   if ((path.length () == 0) || (path == "."))	// get the root ?
     return;
 
-  TDirectory *dir = &fRootDir;
+  TDirectory *dir = fRootDir;
   std::string directory = path;
 
   pos = directory.find ("/");
@@ -692,7 +859,7 @@ TVersionedFile *TCvsInterfacePserver::AddVersionedFile (TDirectory * dir,
   TEntry *entry = dir->FindEntry (name);
 
   // in the list is already an entry - is it a file ?
-  if ((entry != 0) && (entry->isA () != TEntry::FileEntry))
+  if ((entry) && (entry->isA () != TEntry::VersionedFileEntry))
   {
     // it is a directory - kill it
     dir->RemoveEntry (entry);
@@ -703,6 +870,7 @@ TVersionedFile *TCvsInterfacePserver::AddVersionedFile (TDirectory * dir,
   if (entry == 0)
   {
     file = new TVersionedFile (name, version);
+    file->SetLayer (fRemote->GetLayer ());
 
     dir->AddEntry (file);
   }
@@ -962,49 +1130,45 @@ int TCvsInterfacePserver::ConvertAttr (const std::string & data) const
 
 
 
-int TCvsInterfacePserver::LoadFile (const std::string & path,
-				    const std::string & version,
-				    TVersionedFile & file,
-				    long long start, int count,
-				    char * buffer)
+const TFile * TCvsInterfacePserver::LoadFile (const std::string & path,
+					      const std::string & version,
+					      TVersionedFile & file)
 {
   TSyslog *log = TSyslog::instance ();
-  std::string response;
+  std::string realversion;
 
   if (version.length () == 0)
-    response = file.GetHeadVersion ();
+    realversion = file.GetHeadVersion ();
   else
-    response = version;
+    realversion = version;
 
-  const TFile *item = file.FindVersion (response);
-  if (item == 0)
-    return -1;
+  std::string fullpath = path + "@@" + realversion;
+  bool obtainFile = false;
 
-  const TFileData & filedata = item->GetData ();
+  const TFile *item = file.FindVersion (realversion);
+  if (!item)
+    obtainFile = true;
+  else
+    obtainFile = !fRemote->HaveFile (fullpath);
 
-  if (start >= filedata.GetSize ())
-    return -1;
-
-  TCachedFile *cachedFile = fVersionedCache.CachedFile (path, version);
-  if (cachedFile == 0)
-    return -1;
-
-  if (!(cachedFile->HaveFile ()))
+  if (obtainFile)
   {
-    // we do not have it in the file cache - so we have it to load first.
+    // we do not have it in the file cache - so we have to load it
     TCvsSession *session = fConnection.Open ();
     if (session == 0)
-    {
-      delete cachedFile;
       return 0;
-    }
 
-    if (session->SendCo (path, response))
+    if (session->SendCo (path, realversion))
     {
       bool beginOfData = false;
 
       try
       {
+        int time;
+        std::string response;
+        std::string stringpart;
+        TFileData fileData;
+
         // now analyze the response we get from the CVS server
         response = session->ReadLine ();
         while ((response != "ok") && (!beginOfData))
@@ -1012,24 +1176,58 @@ int TCvsInterfacePserver::LoadFile (const std::string & path,
           if (response == "error")
             break;
 
-          if (isdigit (response[0]) != 0)
-            beginOfData = true;
-          else
+          switch (AnalyzeCoLine (response, stringpart))
+          {
+            case CO_MODTIME:
+              time = ConvertTime (stringpart);
+              fileData.SetAtime (time);
+              fileData.SetCtime (time);
+              fileData.SetMtime (time);
+              log->debug << "Modtime: " << stringpart << std::endl;
+              break;
+
+            case CO_ATTRIB:
+              fileData.SetAttribute (ConvertAttr (response));
+              log->debug << "Attribs: " << response << std::endl;
+             break;
+
+            case CO_SIZE:
+              fileData.SetSize (strtoul (response.c_str (), 0, 0));
+              log->debug << "Size: " << response << std::endl;
+
+              if (!item)		// add item read to version list
+                file.AddVersion (realversion, fileData);
+
+              beginOfData = true;
+              break;
+
+            case CO_ELSE:
+              log->debug << "co-Response: " << response << std::endl;
+              break;
+          }
+
+          if (!beginOfData)
             response = session->ReadLine ();
+        }
+
+        if (!item)
+        {		// add item read to version list
+          item = file.FindVersion (realversion);
         }
 
         if (beginOfData)
         {
-          std::ostream *dest = cachedFile->OpenForWrite (std::ios::trunc | std::ios::binary);
+          fRemote->CreateFile (fullpath, S_IRUSR | S_IWUSR);
+          std::ofstream *dest = fRemote->Out (fullpath, std::ios::trunc | std::ios::binary);
           const int bufsize = 4096;
           char readbuf[4096];
           unsigned long pos;
 
-          for (pos = 0; pos < filedata.GetSize (); pos += bufsize)
-            if ((pos + bufsize) > filedata.GetSize ())
+          for (pos = 0; pos < fileData.GetSize (); pos += bufsize)
+            if ((pos + bufsize) > fileData.GetSize ())
             {
-              session->ReadRaw (readbuf, filedata.GetSize () - pos);
-              dest->write (readbuf, filedata.GetSize () - pos);
+              session->ReadRaw (readbuf, fileData.GetSize () - pos);
+              dest->write (readbuf, fileData.GetSize () - pos);
             }
             else
             {
@@ -1049,11 +1247,7 @@ int TCvsInterfacePserver::LoadFile (const std::string & path,
     }
   }
 
-  count = cachedFile->ReadFile (buffer, start, count);
-
-  delete cachedFile;
-
-  return count;
+  return item;
 }
 
 
@@ -1066,7 +1260,7 @@ TDirectory *TCvsInterfacePserver::GetParentDirectory (const std::string & path,
   if ((path.length () == 0) || (path == "."))	// get the root ?
     return 0;
 
-  TDirectory *dir = &fRootDir;
+  TDirectory *dir = fRootDir;
   std::string directory = path;
 
   pos = directory.find ("/");
