@@ -1,12 +1,13 @@
 # Process this file with automake to produce a Makefile.in
 
-DEFS = -DBINDIR=\"$(DESTDIR)$(bindir)\"
+DEFS = -DBINDIR=\"$(bindir)\"
 
 bin_PROGRAMS = cvsmount
 cvsmount_SOURCES = main.c
 
 install-exec-local:
-	ln -fs $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
+	install -d $(DESTDIR)/sbin
+	ln -fs $(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
 
 uninstall-local:
-	rm -f $(DESTDIR)/sbin/mount.cvsfs
+	rm -f /sbin/mount.cvsfs

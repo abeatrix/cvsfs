@@ -1,0 +1,97 @@
+# Note that this is NOT a relocatable package
+Name: @PACKAGE@
+Version: @VERSION@
+Release: 1
+Summary: A virtual file system driver for cvs projects
+Copyright: GPL
+Group: System Environment/Kernel
+Packager: Volker Moell <volker@die-moells.de>
+
+Source: %{name}-%{version}.tar.gz
+
+BuildRoot: %{_tmppath}/%{name}-buildroot
+Prefix: %{_prefix}
+
+
+%description
+The first reason for writing this virtual file system driver was the (in my
+opinion) bad usability of cvs. One time i had to check the source of XFree86
+to determine what and how it have been changed. To do that i have to checkout
+the whole tree of XFree86. This took hours !
+My imagination was to access cvs projects as they were ordinary files on
+the local disk. So cvsfs was born.
+
+During development some other possible advantages came out.
+
+- When building a package via make it sould be possible to log all file
+  accesses to cvs-hosted files. At the end you have a full list of files
+  which were required a package. Using a specialized make a subsequent
+  run will enable it to analyze the dependencies evaluated during an
+  earlier run. This will result in a simplified makefile where each
+  target is asigned only the direct source file. The other dependencies
+  (*.h files, etc.) can be detected using the file system driver.
+
+- Navigation can be done using ordinary file manager (mc, konquerer, etc.)
+
+- you do not have to checkout files to run make.
+
+- you may use different userids for different modules on the same cvs
+  repository.
+
+- you can mount a cvs repository at multiple locations.
+
+- others to come ...
+#'
+
+
+%prep
+%setup
+
+
+%build
+CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=%{prefix}
+make
+
+
+%install
+[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+
+
+
+%clean
+[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+
+
+%post
+if [ -e "/dev/.devfsd" ]; then
+    echo "You are using the device file system - skipped."
+else
+    rm -rf /dev/cvsfs
+    mkdir -m 0700 /dev/cvsfs
+    let x=0
+    while [ $x -le 255 ]; do
+	/bin/mknod --mode=0600 /dev/cvsfs/$x c 245 $x
+	let x=x+1
+    done
+fi
+/sbin/depmod -a
+%preun
+if [ -e "/dev/cvsfs/0" ]; then
+    rm -rf /dev/cvsfs
+fi
+
+
+%files
+%defattr(-,root,root)
+%{prefix}/bin/*
+%{prefix}/sbin/*
+/sbin/mount.cvsfs
+/lib/modules/*/kernel/fs/cvsfs
+/etc/init.d/*
+%doc AUTHORS COPYING ChangeLog INSTALL NEWS README TODO
+
+
+%changelog
+* Mon Aug 20 2002 Volker Moell <volker@die-moells.de>
+- Wrote this specfile; first build

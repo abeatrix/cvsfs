@@ -65,7 +65,7 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
-DEFS = -DBINDIR=\"$(DESTDIR)$(bindir)\"
+DEFS = -DBINDIR=\"$(bindir)\"
 
 bin_PROGRAMS = cvsmount
 cvsmount_SOURCES = main.c
@@ -307,10 +307,11 @@ mostlyclean distclean maintainer-clean
 
 
 install-exec-local:
-	ln -fs $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
+	install -d $(DESTDIR)/sbin
+	ln -fs $(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
 
 uninstall-local:
-	rm -f $(DESTDIR)/sbin/mount.cvsfs
+	rm -f /sbin/mount.cvsfs
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

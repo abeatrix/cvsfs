@@ -12,6 +12,8 @@ else
     DAEMON="$1"
 fi
 
+DESTDIR=$2
+
 if [ -d "/etc/rc.d" ]; then
     if [ -e "/etc/rc.status" ]; then
 	# SuSE has a own init structure
@@ -37,7 +39,7 @@ fi
 # Due the installing person can change this when he executes the
 # 'configure' this must be kept variable here also.
 
-echo " - install initscript $SCRIPT as /etc/init.d/cvsfsd"
+echo " - install initscript $SCRIPT as $DESTDIR/etc/init.d/cvsfsd"
 
 # replace '/' in the path by '\/' as requied by sed
 # be aware: this requires at least bash 2.0 !
@@ -47,5 +49,6 @@ DAEMON=${DAEMON//\//\\\/}
 # construct the sed command line option
 SED_OPTION="s/^CVSFSD_PROGRAM.*/CVSFSD_PROGRAM=\"$DAEMON\"/"
 
-cat $SCRIPT | sed $SED_OPTION > /etc/init.d/cvsfsd
-chmod 0744 /etc/init.d/cvsfsd
+mkdir -p $DESTDIR/etc/init.d
+sed $SED_OPTION < $SCRIPT > $DESTDIR/etc/init.d/cvsfsd
+chmod 0744 $DESTDIR/etc/init.d/cvsfsd

@@ -174,7 +174,7 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
 
 install-exec-local:
-	./makeinit $(DESTDIR)$(sbindir)/cvsfsd
+	./makeinit $(sbindir)/cvsfsd $(DESTDIR)
 
 uninstall-local:
 	rm -f /etc/init.d/cvsfsd
