@@ -172,9 +172,7 @@ current_umask ()
   mask = umask (0);
   umask (mask);               // stupid - there is no getter-only for umask
   
-  sprintf (buffer, "%lu", (S_IRUSR | S_IWUSR |
-                           S_IRGRP | S_IWGRP |
-			   S_IROTH | S_IWOTH) & (~mask));
+  sprintf (buffer, "%lu", (S_IRWXU | S_IRWXG | S_IRWXO) & (~mask));
   
   return buffer;
 }
@@ -193,14 +191,14 @@ current_dmask ()
 
   attr = (S_IRWXU | S_IRWXG | S_IRWXO) & (~mask);
 
-  if ((attr & S_IRUSR) != 0)
+  if ((attr & S_IRUSR) != 0)  // set 'x' flag if 'r' is set
     attr |= S_IXUSR;
   if ((attr & S_IRGRP) != 0)
     attr |= S_IXGRP;
   if ((attr & S_IROTH) != 0)
     attr |= S_IXOTH;
   
-  sprintf (buffer, "%lu", (unsigned long) 493 /* getumask () */);
+  sprintf (buffer, "%lu", attr);
   
   return buffer;
 }
