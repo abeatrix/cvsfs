@@ -33,6 +33,18 @@ During development some other possible advantages came out.
 - others to come ...
 
 
+Requirements:
+-------------
+
+- Kernel 2.4.10 and later.
+  * Tested distributions:
+    - SuSE 7.3
+    - Debian 3.x
+    - RedHat 7.3 (with updated Kernel 2.4.10)
+- Running network.
+- Bash 2.0 and later (for installation)
+
+
 Building the package:
 ---------------------
 
@@ -55,6 +67,10 @@ Add the script 'cvsfsd' to the apropriate run levels (/etc/rc.x) and start
 it (as root):
 
   /etc/init.d/cvsfsd start
+
+
+To automate this you have to create symlinks in the different runlevel
+directories to /etc/init.d/cvsfsd using (for example) a runlevel editor.
   
 
 Usage (for root users):
