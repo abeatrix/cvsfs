@@ -29,7 +29,7 @@
 #endif
 
 
-#define CVSFS_MAX_LINE	512
+#define CVSFS_MAX_PATH	2048
 
 
 
