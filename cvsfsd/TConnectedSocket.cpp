@@ -57,7 +57,7 @@ int TConnectedSocket::Send (const void *message, int length)
 
   FD_ZERO (&rset);
   FD_SET (sockfd, &rset);
-  tv.tv_sec = 10;
+  tv.tv_sec = 20;
   tv.tv_usec = 0;
 
   select (sockfd + 1, NULL, &rset, NULL, &tv);
