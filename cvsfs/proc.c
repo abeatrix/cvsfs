@@ -524,6 +524,172 @@ cvsfs_create_file (struct cvsfs_sb_info * info, char * name, int mode, struct cv
 
 
 
+/* this function asks the daemon remove a file                        */
+/* the request sent to the daemon has this layout:                    */
+/*   rmfile <full path of file>                                       */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> '\0'                                           */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_remove_file (struct cvsfs_sb_info * info, char * name)
+{
+  char * cmd;
+  char * response;
+  char * ptr;
+  int size;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
+#endif
+
+  size = 8 + strlen (name);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  sprintf (cmd, "rmfile %s", name);
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_file - send request -->%s\n", cmd);
+#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_file - returned from daemon -->%s\n", response);
+#endif    
+
+  /* now analyze the string */
+  ret = simple_strtoul (response, &ptr, 0);
+
+  kfree (response);
+
+  return -ret;
+}
+
+
+
+/* this function asks the daemon to truncate a file to size 0         */
+/* the request sent to the daemon has this layout:                    */
+/*   truncfile <full path of file>                                    */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> '\0'                                           */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_truncate_file (struct cvsfs_sb_info * info, char * name)
+{
+  char * cmd;
+  char * response;
+  char * ptr;
+  int size;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: truncate_dir for file %s\n", name);
+#endif
+
+  size = 11 + strlen (name);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  sprintf (cmd, "truncfile %s", name);
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: truncate_file - send request -->%s\n", cmd);
+#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: truncate_file - returned from daemon -->%s\n", response);
+#endif    
+
+  /* now analyze the string */
+  ret = simple_strtoul (response, &ptr, 0);
+
+  kfree (response);
+
+  return -ret;
+}
+
+
+
+/* this function asks the daemon to do a action                       */
+/* the request sent to the daemon has this layout:                    */
+/*   ioctl <action id> <opt. parameter>                               */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> [<data>] '\0'                                  */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retval)
+{
+  char * cmd;
+  char * ptr;
+  char * response;
+  char number[16];
+  int size;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: ioctl #%d\n", action);
+#endif
+
+  sprintf (number, "%d", action);
+
+  size = 7 + strlen (number);
+  if (parm != NULL)
+    size += strlen (parm) + 1;
+    
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  if (parm != NULL)
+    sprintf (cmd, "ioctl %s %s", number, parm);
+  else
+    sprintf (cmd, "ioctl %s", number);
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: ioctl - send request -->%s\n", cmd);
+#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: ioctl - returned from daemon -->%s\n", response);
+#endif    
+
+  ret = simple_strtoul (response, &ptr, 0);
+  if (*ptr != '\0')
+    ++ptr;
+
+  size = strlen (ptr);
+  *retval = kmalloc (size + 1, GFP_KERNEL);
+  if (!*retval)
+    ret = ENOMEM;
+  else
+    strcpy (*retval, ptr);
+
+  kfree (response);  
+  
+/* freeing the space of *retval must be done by the calller ! */
+
+  return -ret;
+}
+
+
+
 int
 cvsfs_get_view (struct cvsfs_sb_info * info, char ** data)
 {
@@ -568,53 +734,4 @@ cvsfs_control_command (struct cvsfs_sb_info * info, char * command, char * param
   printk (KERN_DEBUG "cvsfs: cvsfs_control_command - not implemented\n");
 
   return 0;
-}
-
-
-
-/* this function asks the daemon remove a file                        */
-/* the request sent to the daemon has this layout:                    */
-/*   rmdir <full path of file>                                        */
-/* the expected return is from the daemon is:                         */
-/*   <completion code> '\0'                                           */
-/* the completion codes are:                                          */
-/*   0 for successful completed                                       */
-/*   one of the values defined in asm/errno.h in case of an error     */
-int
-cvsfs_remove_file (struct cvsfs_sb_info * info, char * name)
-{
-  char * cmd;
-  char * response;
-  char * ptr;
-  int size;
-  int ret;
-
-//#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
-//#endif
-
-  size = 8 + strlen (name);
-  cmd = kmalloc (size, GFP_KERNEL);
-  if (!cmd)
-    return -ENOMEM;
-
-  sprintf (cmd, "rmfile %s", name);
-//#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir - send request -->%s\n", cmd);
-//#endif    
-  ret = cvsfs_serialize_request (info, cmd, size, &response);
-  kfree (cmd);
-  if (ret <= 0)		/* error, daemon not running or empty response */
-    return -EIO;
-
-//#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir - returned from daemon -->%s\n", response);
-//#endif    
-
-  /* now analyze the string */
-  ret = simple_strtoul (response, &ptr, 0);
-
-  kfree (response);
-
-  return -ret;
 }
