@@ -91,7 +91,7 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
   struct qstr qname;
   unsigned long ino;
-  char buf[512];
+  char buf[CVSFS_MAX_PATH];
   char * name;
 
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
@@ -157,7 +157,7 @@ static int cvsfs_create (struct inode * dir, struct dentry * dentry, int mode)
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
   struct cvsfs_fattr fattr;
   struct inode       *inode;
-  char buf[512];
+  char buf[CVSFS_MAX_PATH];
   int res;
 
 #ifdef __DEBUG__
@@ -198,7 +198,7 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
   struct inode       *inode;
-  char buf[512];
+  char buf[CVSFS_MAX_PATH];
   int retval;
 
 #ifdef __DEBUG__
@@ -233,7 +233,7 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
   struct cvsfs_fattr fattr;
   struct inode       *inode;
-  char buf[512];
+  char buf[CVSFS_MAX_PATH];
 
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return ERR_PTR (-ENOENT);
@@ -271,7 +271,7 @@ static int cvsfs_mkdir (struct inode * dir, struct dentry * dentry, int mode)
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
   struct cvsfs_fattr fattr;
   struct inode       *inode;
-  char buf[512];
+  char buf[CVSFS_MAX_PATH];
   int res;
 
 #ifdef __DEBUG__
@@ -290,7 +290,7 @@ static int cvsfs_mkdir (struct inode * dir, struct dentry * dentry, int mode)
     return -EACCES;
     
   dentry->d_op = &cvsfs_dentry_operations;
-  dentry->d_time = 0;
+  dentry->d_time = 0;			/* mark dentry values valid */
   dir->i_nlink++;
   inode->i_nlink = 2;  
 
@@ -309,7 +309,7 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
   struct inode       *inode;
-  char buf[512];
+  char buf[CVSFS_MAX_PATH];
   int retval;
 
 #ifdef __DEBUG__
@@ -366,9 +366,9 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
   {
     lock_kernel ();
 
-    if (dentry->d_time != 0)
+    if (dentry->d_time != 0)	/* dentry values valid ? */
       valid = 0;
-    
+
     if (is_bad_inode (inode))
       valid = 0;
 
