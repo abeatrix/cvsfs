@@ -33,6 +33,13 @@ TFile::TFile (const std::string & name, const std::string & version)
 
 
 
+TFile::TFile (const TFile & clone)
+: TEntry (clone), fVersion (clone.fVersion), fDataValid (clone.fDataValid),
+  fData (clone.fData)
+{
+}
+
+
 TFile::~TFile ()
 {
 }

@@ -30,6 +30,13 @@ TEntry::TEntry (const std::string & name)
 
 
 
+TEntry::TEntry (const TEntry & clone)
+: fName (clone.fName), fLayer (clone.fLayer), fReadOnly (clone.fReadOnly)
+{
+}
+
+
+
 TEntry::~TEntry ()
 {
 }

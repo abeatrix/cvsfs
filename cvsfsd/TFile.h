@@ -31,6 +31,7 @@ class TFile : public TEntry
 {
   public:
     TFile (const std::string &, const std::string &);
+    TFile (const TFile &);
     virtual ~TFile ();
 
     virtual TEntry * Clone () const;

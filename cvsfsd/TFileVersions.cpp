@@ -24,38 +24,55 @@
 
 
 TFileVersions::TFileVersions ()
-: fValue (new VersionValue)
 {
 }
 
 
 
 TFileVersions::TFileVersions (const TFileVersions & clone)
-: fValue (clone.fValue)
 {
-  ++(fValue->fRefCount);
+  MapType::const_iterator iter;
+
+  for (iter = clone.fVersions.begin (); iter != clone.fVersions.end (); ++iter)
+  {
+    TFile * data = new TFile (*((*iter).second));
+
+    fVersions.insert (ValuePair ((*iter).first, data));
+  }
 }
 
 
 
 TFileVersions::~TFileVersions ()
 {
-  if ((--(fValue->fRefCount)) == 0)
-    delete fValue;
+  MapType::iterator iter;
+
+  for (iter = fVersions.begin (); iter != fVersions.end (); ++iter)
+    delete (*iter).second;
 }
 
 
 
 TFileVersions & TFileVersions::operator = (const TFileVersions & rhs)
 {
-  if (fValue == rhs.fValue)
+  if (this == &rhs)
     return *this;
 
-  if ((--(fValue->fRefCount)) <= 0)
-    delete fValue;
+  MapType::iterator erase;
 
-  fValue = rhs.fValue;
-  ++(fValue->fRefCount);
+  for (erase = fVersions.begin (); erase != fVersions.end (); ++erase)
+    delete (*erase).second;
+
+  fVersions.clear ();
+
+  MapType::const_iterator iter;
+
+  for (iter = rhs.fVersions.begin (); iter != rhs.fVersions.end (); ++iter)
+  {
+    TFile * data = new TFile (*((*iter).second));
+
+    fVersions.insert (ValuePair ((*iter).first, data));
+  }
 
   return *this;
 }
@@ -64,11 +81,11 @@ TFileVersions & TFileVersions::operator = (const TFileVersions & rhs)
 
 const TFile * TFileVersions::FindVersion (const std::string & version) const
 {
-  MapType::iterator iter;
+  MapType::const_iterator iter;
   
-  iter = fValue->fVersions.find (version);
-  if (iter != fValue->fVersions.end ())
-    return &((*iter).second);
+  iter = fVersions.find (version);
+  if (iter != fVersions.end ())
+    return (*iter).second;
 
   return 0;
 }
@@ -77,40 +94,34 @@ const TFile * TFileVersions::FindVersion (const std::string & version) const
 
 const TFile * TFileVersions::GetVersion (int index) const
 {
-  MapType::iterator iter;
+  MapType::const_iterator iter;
   int count;
 
-  for (iter = fValue->fVersions.begin (), count = 0;
-       (iter != fValue->fVersions.end ()); ++iter, ++count)
+  for (iter = fVersions.begin (), count = 0;
+       (iter != fVersions.end ()); ++iter, ++count)
     if (count == index)
-      return &((*iter).second);
+      return (*iter).second;
 
   return 0;
 }
 
 
 
-void TFileVersions::AddVersion (const std::string & version, const TFile & data)
+void TFileVersions::AddVersion (const std::string & version, TFile * data)
 {
-  fValue->fVersions.insert (ValuePair (version, data));
+  fVersions.insert (ValuePair (version, data));
 }
 
 
 
 void TFileVersions::RemoveVersion (const std::string & version)
 {
-  fValue->fVersions.erase (version);
-}
+  MapType::iterator iter = fVersions.find (version);
 
+  if (iter != fVersions.end ())
+  {
+    delete (*iter).second;
 
-
-TFileVersions::VersionValue::VersionValue ()
-: fRefCount (0)
-{
-}
-
-
-
-TFileVersions::VersionValue::~VersionValue ()
-{
+    fVersions.erase (iter);
+  }
 }

@@ -24,7 +24,7 @@
 
 
 
-// reference counted list of file versions
+// list of file versions
 
 class TFileVersions
 {
@@ -38,23 +38,14 @@ class TFileVersions
     const TFile * FindVersion (const std::string &) const;
     const TFile * GetVersion (int) const;
 
-    void AddVersion (const std::string &, const TFile &);
+    void AddVersion (const std::string &, TFile *);
     void RemoveVersion (const std::string &);
 
   private:
-    typedef std::map<std::string, TFile> MapType;
+    typedef std::map<std::string, TFile *> MapType;
     typedef MapType::value_type ValuePair;
 
-    struct VersionValue
-    {    
-      MapType	fVersions;
-      int	fRefCount;
-      
-      VersionValue ();
-      ~VersionValue ();
-    };
-    
-    VersionValue *fValue;
+    MapType	fVersions;
 };
 
 

@@ -41,6 +41,7 @@ class TEntry
 //    } EntrySource;
 
     TEntry (const std::string &);
+    TEntry (const TEntry &);
     virtual ~TEntry ();
 
     std::ostream & operator << (std::ostream &) const;
@@ -52,6 +53,7 @@ class TEntry
 
     void SetLayer (int layer) { fLayer = layer; }
     void SetReadOnly () { fReadOnly = true; }
+    void ResetReadOnly () { fReadOnly = false; }
 
     virtual EntryType isA () const = 0;
     virtual bool ValidData () const = 0;

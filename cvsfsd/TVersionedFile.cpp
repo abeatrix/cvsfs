@@ -70,13 +70,13 @@ TEntry::EntryType TVersionedFile::isA () const
 
 void TVersionedFile::AddVersion (const std::string & version, const TFileData & data)
 {
-  TFile item (GetName (), version);
+  TFile * item = new TFile (GetName (), version);
 
-  item.SetLayer (fLayer);
-  item.SetData (data);
+  item->SetLayer (fLayer);
+  item->SetData (data);
 
   if (fReadOnly)
-    item.SetReadOnly ();
+    item->SetReadOnly ();
 
   fFileVersions.AddVersion (version, item);
 
