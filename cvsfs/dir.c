@@ -89,7 +89,6 @@ static struct dentry_operations cvsfs_dentry_operations = {
 static int
 cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 {
-  struct dentry *item;
   struct dentry *dentry = f->f_dentry;
   struct inode *inode = dentry->d_inode;
   struct super_block *sb = inode->i_sb;
