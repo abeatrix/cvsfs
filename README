@@ -274,3 +274,4 @@ cvsmount/cvsmount    ! /usr/local/bin/cvsmount
 cvsumount/cvsumount  ! /usr/local/bin/cvsumount
 cvsmnt/cvsmnt        ! /usr/local/bin/cvsmnt
 script makedevs      ! /dev/cvsfs/0 ... 255  (if no device filesystem is used)
+script init/makeinit | /etc/init.d/cvsfsd
