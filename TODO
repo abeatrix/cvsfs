@@ -8,7 +8,7 @@ Short term:
   - modify debug level
   - cache cleanup
   - ...
-* IOCTL interface for checkin/checkout
+* IOCTL interface for checkin
 * IOCTL interface to get a version tree of a CVS file
 * GUI Interface to display version tree (volunteers welcome)
 
@@ -16,6 +16,7 @@ Short term:
 Long term:
 ----------
 
+* IPv6 support
 * Enchance GNU make to support logging via this driver to evaluate the
   file dependencies.
 * Adapt for kernel 2.2.x ?

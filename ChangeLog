@@ -1,10 +1,37 @@
+2002-09-08  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.3
+	* cvsfsd/TCacheSystemCheckedout (AddFile): add missing file name
+	  handling to split off the file version
+
+2002-09-07  Andreas Pillath <pillath@ise-online.com>
+	* cvsfs/superblock.c (cvsfs_remove_superblock): fix pointer value
+	  which was not properly transferred.
+
+2002-09-07  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TInterfacePserver.cpp (Checkout): found double deletion of
+	  dynamically allocated space.
+	* cvsfs/Makefile.am: pass package version number as compile option
+
+2002-09-06  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TInterfacePserver.cpp: add code to allow user driven checkout
+	* tools/TFunctionCheckout.*: new - support 'checkout' IOCTL call
+	* cvsfs/*: extend debugging messages to give the mount number also
+	* cvsfs/Makefile.am: pass package version number as compile option
+	* cvsfs/main.c (init_cvs_fs): display package version number
+
+2002-09-06  Andreas Pillath <pillath@ise-online.com>
+	* cvsfs/superblock.c (cvsfs_remove_superblock): fix pointer value
+	  which was not reset at unmount.
+
 2002-09-05  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.3
 	* cvsfs/superblock.c (cvsfs_read_super): add check - each mount point
 	  must only be used once.
 	* cvsfsd/TModuleAction*.cpp (doit): returns true only if quit is received
-	* cvsfsd/main.cpp (main): a failed server test does not result in an
+	* cvsfsd/main.cpp (main): a failed server test should not result in an
 	  abort of the daemon.
+
+2002-09-05  Andreas Pillath <pillath@ise-online.com>
 	* cvsfsd/TConnectedSocket.cpp: missing #include <sys/time.h> added
 
 2002-09-03  Petric Frank  <pfrank@gmx.de>

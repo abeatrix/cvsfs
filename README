@@ -208,11 +208,12 @@ This will mount the cvsfs CVS repository at <mountpoint>.
 Tools:
 ------
 
-  cvsctl <command> [<optional parameters>]
+  cvsctl <command>
 
-  <command> may be:
-    version	obtain version of file passed as parameter
-  
+    <command> may be:
+      version <file>			obtain version of file
+      checkout <file> [<version>]	checkout file (of specified version)
+
 
 Working with a cvsfs mounted file system:
 -----------------------------------------
