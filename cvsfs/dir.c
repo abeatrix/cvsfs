@@ -33,7 +33,7 @@
 #include "proc.h"
 #include "util.h"
 
-#define __DEBUG__
+//#define __DEBUG__
 
 
 /* forward references - directory operations */
@@ -118,6 +118,9 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
       break;
 
     default:
+#ifdef __DEBUG__
+      printk (KERN_DEBUG "cvsfs: readdir - get file #%lli\n", f->f_pos);
+#endif
       /* ask cvsfs daemon to get the directory contents */
       name = cvsfs_get_file (info, buf, f->f_pos);
       if (!name)
@@ -200,14 +203,11 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
   char buf[CVSFS_MAX_PATH];
   int retval;
 
-#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs(%d): rmdir\n", info->id);
-#endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs(%d): rmdir - file %s\n", info->id, buf);
+  printk (KERN_DEBUG "cvsfs(%d): unlink - file %s\n", info->id, buf);
 #endif
   retval = cvsfs_remove_file (info, buf);
   if (retval < 0)
@@ -216,12 +216,12 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
   inode = dentry->d_inode;
   inode->i_nlink = 0;
   inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-//    dir->i_nlink--;
+//  dir->i_nlink--;
+  if (dentry->d_parent != NULL)
+    dentry->d_parent->d_time = 1;	/* parent dentry invalid - re-read it */
+  dentry->d_time = 1;			/* dentry invalid - re-read it */
 
   d_delete (dentry);
-  
-//  if (dentry->d_parent != NULL)
-//    dentry->d_parent->d_time = 1;	/* parent dentry invalid - re-read it */
     
   return 0;
 }
@@ -241,7 +241,7 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
     return ERR_PTR (-ENOENT);
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs(%d): lookup - search for name %s\n", info->id, buf);
+  printk (KERN_DEBUG "cvsfs(%d): lookup - search for name %s, parent inode %lu\n", info->id, buf, dir->i_ino);
 #endif
   /* do we have the file ? */
   if (cvsfs_get_attr (info, buf, &fattr) >= 0)
@@ -251,11 +251,19 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
     kfree (fattr.f_version);
 
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs(%d): lookup - inode %lu\n", info->id, fattr.f_ino);
+    printk (KERN_DEBUG "cvsfs(%d): lookup - inode %lu, attribs 0x%x\n", info->id, fattr.f_ino, fattr.f_mode);
 #endif
     if (!inode)
-      return ERR_PTR (-EACCES);
+#ifdef __DEBUG__
+    {
+      printk (KERN_DEBUG "cvsfs(%d): lookup - inode = NULL\n", info->id);
+#endif
     
+      return ERR_PTR (-EACCES);
+#ifdef __DEBUG__
+    }
+#endif
+
     dentry->d_op = &cvsfs_dentry_operations;
     dentry->d_time = 0;
 
@@ -353,15 +361,28 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
 static int
 cvsfs_lookup_validate (struct dentry * dentry, int flags)
 {
+  struct inode *inode = dentry->d_inode;
 #ifdef __DEBUG__
+  struct super_block *sb;
+  struct cvsfs_sb_info *info;
   char buf[128];
 #endif
-  struct inode *inode = dentry->d_inode;
   int valid = 1;
 
 #ifdef __DEBUG__
+  if (inode)
+  {
+    sb = inode->i_sb;
+    info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+  }
+#endif
+
+#ifdef __DEBUG__
   cvsfs_get_name (dentry, buf, sizeof (buf));
-  printk (KERN_DEBUG "cvsfs: lookup_validate - file %s\n", buf);
+  if (inode)
+    printk (KERN_DEBUG "cvsfs(%d): lookup_validate - file %s, inode %lu\n", info->id, buf, inode->i_ino);
+  else
+    printk (KERN_DEBUG "cvsfs: lookup_validate - file %s, no inode\n", buf);
 #endif
 
   if (inode)
@@ -376,9 +397,14 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
 
     unlock_kernel ();
   }
+  else
+    valid = 0;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: lookup_validate - valid = %d\n", valid);
+  if (inode)
+    printk (KERN_DEBUG "cvsfs(%d): lookup_validate - valid = %d\n", info->id, valid);
+  else
+    printk (KERN_DEBUG "cvsfs: lookup_validate - valid = %d\n", valid);
 #endif
 
   return valid;
