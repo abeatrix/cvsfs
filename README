@@ -139,6 +139,30 @@ or
 
 
 
+Working with a cvsfs mounted file system:
+-----------------------------------------
+
+You can navigate through the mounted file system with whatever tool you
+want. You will see the latest revision of the files.
+
+Remark: Actually you are limited to the latest revision but this will
+        change later. You can access directly a special revision of
+	a file with the method described below.
+
+If you want to get a special revision of a file you can use the '@@'
+delimiter to identify it. For example:
+
+  cat filename@@1.1
+  
+will retrieve the version 1.1 of the file named 'filename' from cvs and
+display it on the screen.
+This file notation can also be used with all tools which takes a file name
+as parameter, for example:
+
+  diff filename@@1.1 filename@@1.2
+
+
+
 Procfs support:
 ---------------
 

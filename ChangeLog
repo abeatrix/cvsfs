@@ -1,30 +1,30 @@
-2001/06/18:
+2001-06-18  Petric Frank  <pfrank@gmx.de>
 * initial release
 
-2001/11/07:
+2001-11-07  Petric Frank  <pfrank@gmx.de>
 * retrieves file size and date
 * ability to read files
 
-2001/11/08:
+2001-11-08  Petric Frank  <pfrank@gmx.de>
 * Bugfix: Month not calculated properly
 * Code cleanups
 
-2001/11/14:
+2001-11-14  Petric Frank  <pfrank@gmx.de>
 * Bugfix: Time calculation of files fixed
 * Removed debug messages to syslog
 * Add support of procfs
 
-2001/11/15:
+2001-11-15  Petric Frank  <pfrank@gmx.de>
 * Bugfix: Procfs writes to file view and control getting an endless loop
 * Support mount options to give the mounted files defined uid's and gid's
 * Allow mount options to set the file and directory attributes (but not
   implemented - the don't give an error message)
 
-2001/11/18:
+2001-11-18  Petric Frank  <pfrank@gmx.de>
 * Activate the setting of file/directory mode setting in mount command
 * Provide cvsumount to unmount file systems mounted via cvsmount.
 
-2001/11/20:
+2001-11-20  Petric Frank  <pfrank@gmx.de>
 * Add configure and companions to the project (thanks Johan Rydberg)
 * Allow versioned access to files. i.e 'ls file.ext@@1.1'
 * Fix: versioned kernel symbols correctly detected
