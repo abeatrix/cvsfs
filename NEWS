@@ -1,8 +1,16 @@
+Version 1.0.8:
+Fix compile errors of the cvsfs kernel module on RedHat installations.
+The errors were reported for RedHat 7.0 and 7.2. Others may also be
+involved.
+
+Version 1.0.7:
+The version 1.0.6 was wrongly packaged. All header files were left out.
+Fixed re-release.
+
 Version 1.0.6:
 
 Revamp the source code to be in line with GNU coding standards.
 Modified the caching strategy to speed up the scan of the directories.
-
 
 
 Version 1.0.5:
