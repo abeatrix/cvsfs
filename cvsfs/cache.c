@@ -28,7 +28,7 @@
 
 #define CVSFS_CACHE_LEN		5
 #define CVSFS_CACHE_HASH	5
-#define	CVSFS_CACHE_TTL		1
+#define	CVSFS_CACHE_TTL		30
 
 
 
