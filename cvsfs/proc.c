@@ -26,8 +26,6 @@
 
 #include <net/ip.h>
 
-//#include <asm/uaccess.h>	// provide get_fs, set_fs functions
-
 #include "inode.h"
 #include "cache.h"
 #include "socket.h"
@@ -229,17 +227,17 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
                           if (strncmp (p, "mount_user=", 11) == 0)
 	    		  {
 	    		    info->mount_uid = simple_strtoul (&p[11], NULL, 0);
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
 		            printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - mount_uid = %d\n", info->mount_uid);
-//#endif
+#endif
   			  }
 	    		  else
             		    if (strncmp (p, "mount_group=", 12) == 0)
 	    		    {
 	    		      info->mount_gid = simple_strtoul (&p[12], NULL, 0);
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
 	    		      printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - mount_gid = %d\n", info->mount_gid);
-//#endif
+#endif
   	    		    }
 	    		    else
 	            	      printk (KERN_ERR "Invalid option '%s' passed\n", p);
@@ -250,49 +248,57 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
 
 
 
-int cvsfs_get_fname (char * s, char * d, char ** ver)
+int cvsfs_get_fname (char * s, char * d, char * ver)
 {
   static char *prefix = "M File ";
   static char *revision = " is new; current revision ";
+  static char *changed1 = " changed from revision ";
+  static char *changed2 = " to ";
   static char *dir = "E cvs server: Diffing ";
   int ret = -1;
 
-  *ver = NULL;
-  
   if (strncmp (s, prefix, strlen (prefix)) == 0)
   {
+    char *name;
     char *ptr;
-    int tocheck;
-    int stop = 1;
-    int i;
+    
+    name = &(s[strlen (prefix)]);
 #ifdef __DEBUG__
-    printk (KERN_DEBUG " -- is a file\n");
+    printk (KERN_DEBUG " -- is a file: (%s)\n", name);
 #endif
-    ptr = &(s[strlen (prefix)]);
-    tocheck = strlen (ptr) - strlen (revision);
-    for (tocheck = strlen (ptr) - strlen (revision); tocheck > 0; --tocheck)
+    if ((ptr = strstr (name, revision)) == NULL)
     {
-      stop = 0;
-
-      for (i = 0; (i < strlen (revision)) && (stop == 0) ; ++i)
-        if (ptr[i] != revision[i])
-          stop = 1;
-
-      if (stop == 0)
+      if ((ptr = strstr (name, changed1)) != NULL)
       {
-        *ver = &(ptr[strlen (revision)]);
-      
-        break;
+        char *version;
+#ifdef __DEBUG__
+        printk (KERN_DEBUG " -- changed version '%s'\n", name);
+#endif
+	version = &(ptr[strlen (changed1)]);
+	
+	if ((version = strstr (version, changed2)) != NULL)
+	{
+	  strcpy (ver, &(version[strlen (changed2)]));
+#ifdef __DEBUG__
+          printk (KERN_DEBUG " -- version '%s'\n", ver);
+#endif
+	}
+	else
+	  ptr = NULL;
       }
-
-      *d = *ptr;
-      ++d;
-      ++ptr;
     }
-
-    if (stop == 0)
+    else
     {
-      *d = '\0';
+      strcpy (ver, &(ptr[strlen (revision)]));
+#ifdef __DEBUG__
+      printk (KERN_DEBUG " -- version '%s'\n", ver);
+#endif
+    }
+      
+    if (ptr != NULL)
+    {
+      *ptr = '\0';
+      strcpy (d, name);
       ret = 1;
     }
   }
@@ -300,6 +306,7 @@ int cvsfs_get_fname (char * s, char * d, char ** ver)
     if (strncmp (s, dir, strlen (dir)) == 0)
     {
       strcpy (d, &(s[strlen (dir)]));
+      *ver = '\0';
 
       ret = 0;
     }
@@ -321,7 +328,7 @@ int cvsfs_convert_month (char *ptr, char **newptr)
     if (strncmp (ptr, monthNames[loop - 1], 3) == 0)
       return loop;
   
-  printk (KERN_DEBUG "cvsfs: cvsfs_convert_month - invalid month name %s - using 'January'\n", ptr);
+  printk (KERN_ERR "cvsfs: cvsfs_convert_month - invalid month name %s - using 'January'\n", ptr);
   
   return 1;  // no valid month string - return dummy: January
 }
@@ -373,7 +380,7 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
 #endif  
   if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - connect failed !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_get_fattr - connect failed !\n");
 
     return -1;
   }
@@ -388,7 +395,9 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
   i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
   if (i < 0)
   {
+#ifdef __DEBUG__
     printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - line read : %s\n", line);
+#endif
 
     cvsfs_disconnect (&sock);
 
@@ -399,7 +408,7 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
   {
     if (strncmp (line, "error", 5) == 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - error while reading file\n");
+      printk (KERN_ERR "cvsfs: cvsfs_get_fattr - error while reading file\n");
 
       cvsfs_disconnect (&sock);
 
@@ -425,7 +434,7 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
     i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
     if (i <= 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - no response !\n");
+      printk (KERN_ERR "cvsfs: cvsfs_get_fattr - no response !\n");
 
       cvsfs_disconnect (&sock);
 
@@ -440,13 +449,13 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
 
 
 
-int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_directory * dir)
+int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_directory * dir, char * ver)
 {
   struct cvsfs_dirlist_node *p;
   char res[CVSFS_MAX_LINE];
   char line[CVSFS_MAX_LINE];
   char basedir[CVSFS_MAX_LINE];
-  char *version;
+  char version[CVSFS_MAX_LINE];
   char *ptr;
   int len;
   int i;
@@ -454,7 +463,10 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
 
   sock = NULL;
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - directory '%s'\n", name);
+  if (ver == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - directory '%s'\n", name);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - directory '%s' (version %s)\n", name, ver);
 #endif
   strcpy (basedir, info->mnt.project);
   strcat (basedir, name);
@@ -467,14 +479,14 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
 
   if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - connect failed !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_loaddir - connect failed !\n");
 
     return -1;
   }
 
-  if (cvsfs_command_sequence_rdiff (sock, info, basedir) < 0)
+  if (cvsfs_command_sequence_rdiff (sock, info, basedir, ver) < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - rdiff command failed !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_loaddir - rdiff command failed !\n");
 
     cvsfs_disconnect (&sock);
 
@@ -484,7 +496,7 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
   i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
   if (i < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - no response !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_loaddir - no response !\n");
 
     cvsfs_disconnect (&sock);
 
@@ -495,14 +507,14 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
   {
     if (strncmp (line, "error", 5) == 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - error while reading directory\n");
+      printk (KERN_ERR "cvsfs: cvsfs_loaddir - error while reading directory\n");
 
       cvsfs_disconnect (&sock);
 
       return -1;
     }
 
-    i = cvsfs_get_fname (line, res, &version);
+    i = cvsfs_get_fname (line, res, version);
     if (i != -1)
     {
       if ((strncmp (res, basedir, len) == 0) && (res[len] == '/'))
@@ -527,7 +539,7 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
         }
         strcpy (p->entry.name, ptr);
 
-        if (version != NULL)
+        if (*version != '\0')
 	{
           p->entry.version = (char *) kmalloc (strlen (version) + 1, GFP_KERNEL);
           if (!p->entry.version)
@@ -539,6 +551,8 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
           }
           strcpy (p->entry.version, version);
 	}
+	else
+	  p->entry.version = NULL;
 
         p->entry.size = 0;
         p->entry.blocksize = 1024;
@@ -547,7 +561,12 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
 
         if (i == 0)				/* directory */
         {
-          printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s'\n", res);
+#ifdef __DEBUG__
+          if (p->entry.version == NULL)
+            printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s'\n", p->entry.name);
+	  else
+            printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s' (version %s)\n", p->entry.name, p->entry.version);
+#endif
           p->entry.mode |= info->mnt.dir_mode; // S_IFDIR | S_IRUSR | S_IXUSR;
         }
         else
@@ -572,7 +591,7 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
     i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
     if (i <= 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - no response !\n");
+      printk (KERN_ERR "cvsfs: cvsfs_loaddir - no response !\n");
 
       cvsfs_disconnect (&sock);
 
@@ -639,25 +658,59 @@ int cvsfs_get_attr (struct dentry * dentry, struct cvsfs_fattr * fattr, struct c
   struct cvsfs_directory *dir;
   char buf[CVSFS_MAX_LINE];
   struct cvsfs_dirlist_node *file;
+  char name[CVSFS_MAX_LINE];
+  char *version;
+  int size;
 
   cvsfs_get_name (dentry->d_parent, buf);
 
-  dir = cvsfs_cache_get (info, buf);
+  size = dentry->d_name.len < (sizeof (name) - 1) ? dentry->d_name.len : (sizeof (name) - 1);
+  strncpy (name, dentry->d_name.name, size);
+  name[size] = '\0';
+
+  if ((version = strstr (name, "@@")) != NULL)
+  {
+    *version = '\0';
+    ++version;
+    ++version;
+  }
+#ifdef __DEBUG__
+  if (version == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file %s\n", name);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file %s (version %s)\n", name, version);
+#endif
+  dir = cvsfs_cache_get (info, buf, version);
 
   if (!dir)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - cvsfs_cache_get failed !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_get_attr - cvsfs_cache_get failed !\n");
 
     return -1;
   }
-
+#ifdef __DEBUG__
+  if (version == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - search file %s\n", name);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - search file %s (version %s)\n", name, version);
+#endif
   for (file = dir->head; file != NULL; file = file->next)
-    if (strcmp (dentry->d_name.name, file->entry.name) == 0)
-      break;
+  {
+#ifdef __DEBUG__
+    if (file->entry.version == NULL)
+      printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - scan file %s\n", file->entry.name);
+    else
+      printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - scan file %s (version %s)\n", file->entry.name, file->entry.version);
+#endif
+    if (strcmp (name, file->entry.name) == 0)
+      if ((version == NULL) || (file->entry.version == NULL) ||
+          (strcmp (file->entry.version, version) == 0))
+        break;
+  }
 
   if (!file)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file not found in parent dir cache !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_get_attr - file not found in parent dir cache !\n");
 
     return -1;
   }
@@ -676,7 +729,7 @@ int cvsfs_get_attr (struct dentry * dentry, struct cvsfs_fattr * fattr, struct c
     fattr->f_info.version = kmalloc (strlen (file->entry.version) + 1, GFP_KERNEL);
     if (fattr->f_info.version == NULL)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - memory squeeze !\n");
+      printk (KERN_ERR "cvsfs: cvsfs_get_attr - memory squeeze !\n");
       
       return -1;
     }
@@ -702,6 +755,9 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   cvsfs_lock (info);
 
   cvsfs_get_name (dentry, line);
+
+  if ((version = strstr (line, "@@")) != NULL)  // strip version info
+    *version = '\0';                            // already saved in inode
   
   sock = NULL;
 
@@ -723,7 +779,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   
   if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_read - connect failed !\n");
+    printk (KERN_ERR "cvsfs: cvsfs_read - connect failed !\n");
 
     return 0;
   }
@@ -738,7 +794,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
   if (i < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_read - read timeout\n");
+    printk (KERN_ERR "cvsfs: cvsfs_read - read timeout\n");
 
     cvsfs_disconnect (&sock);
 
@@ -752,7 +808,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
 #endif
     if (strncmp (line, "error", 5) == 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_read - 'error' returned from server\n");
+      printk (KERN_ERR "cvsfs: cvsfs_read - 'error' returned from server\n");
 
       cvsfs_disconnect (&sock);
 
@@ -770,7 +826,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
 	  
         if (cvsfs_read_raw_data (sock, offset, NULL) < 0)  // skip bytes
         {
-          printk (KERN_DEBUG "cvsfs: cvsfs_read - low read !\n");
+          printk (KERN_ERR "cvsfs: cvsfs_read - low read !\n");
 
           cvsfs_disconnect (&sock);
 
@@ -789,7 +845,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
     i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
     if (i <= 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_read - no response !\n");
+      printk (KERN_ERR "cvsfs: cvsfs_read - no response !\n");
 
       cvsfs_disconnect (&sock);
 

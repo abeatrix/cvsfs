@@ -94,7 +94,7 @@ int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info
 
 
 
-int cvsfs_command_sequence_rdiff (struct socket * sock, struct cvsfs_sb_info * info, char * basedir)
+int cvsfs_command_sequence_rdiff (struct socket * sock, struct cvsfs_sb_info * info, char * basedir, char * version)
 {
 //  if (cvsfs_execute (info, "UseUnchanged") < 0)
 //  {
@@ -122,6 +122,23 @@ int cvsfs_command_sequence_rdiff (struct socket * sock, struct cvsfs_sb_info * i
     printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_rdiff - 'Argument 0' failed !\n");
 
     return -1;
+  }
+
+  if (version != NULL)
+  {
+    if (cvsfs_execute (sock, "Argument -r") < 0)
+    {
+      printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_rdiff - 'Argument -r' failed !\n");
+
+      return -1;
+    }
+    
+    if (cvsfs_execute_command (sock, "Argument ", version, NULL) < 0)
+    {
+      printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_rdiff - 'Argument %s' failed !\n", version);
+
+      return -1;
+    }
   }
   
   if (cvsfs_execute_command (sock, "Argument ", basedir, NULL) < 0)

@@ -28,7 +28,7 @@ struct cvsfs_sb_info;
 
 
 int cvsfs_command_sequence_co (struct socket *, struct cvsfs_sb_info *, char *, char *, char *);
-int cvsfs_command_sequence_rdiff (struct socket *, struct cvsfs_sb_info *, char * );
+int cvsfs_command_sequence_rdiff (struct socket *, struct cvsfs_sb_info *, char *, char *);
 
 
 

@@ -123,7 +123,7 @@ char *current_umask ()
   mask = umask (0);
   umask (mask);               // stupid - there is no getter-only for umask
   
-  sprintf (buffer, "%lu", (S_IRWXU | S_IRWXG | S_IRWXO) & (~mask));
+  sprintf (buffer, "%lu", (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) & (~mask));
   
   return buffer;
 }

@@ -26,9 +26,6 @@
 #include <linux/smp_lock.h>
 #include <linux/slab.h>
 
-//#include <asm/uaccess.h>
-//#include <asm/system.h>
-
 #include "inode.h"
 #include "cache.h"
 #include "proc.h"
@@ -103,7 +100,7 @@ static int cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 
     default:
       cvsfs_lock (info);
-      dir = cvsfs_cache_get (info, buf);
+      dir = cvsfs_cache_get (info, buf, NULL);
       cvsfs_unlock (info);
 
       if (!dir)

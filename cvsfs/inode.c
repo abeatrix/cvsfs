@@ -52,20 +52,6 @@ struct super_operations cvsfs_sops = {
 
 
 
-/* forward references - address space operations */
-/*static int cvsfs_readpage (struct file *, struct page *);
-static int cvsfs_writepage (struct page *);
-static int cvsfs_prepare_write (struct file *, struct page *, unsigned, unsigned);
-static int cvsfs_commit_write (struct file *, struct page *, unsigned, unsigned);
-					    					    					
-struct address_space_operations cvsfs_aops = {
-						readpage:	cvsfs_readpage,
-						writepage:	cvsfs_writepage,
-						prepare_write:	cvsfs_prepare_write,
-						commit_write:	cvsfs_commit_write,
-					     };
-*/
-
 /* local forward references */
 static void cvsfs_set_inode_attr (struct inode *, struct cvsfs_fattr *);
 
@@ -188,7 +174,6 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
   info->mnt.dir_mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH | S_IFDIR;
   info->mnt.uid = current->uid;
   info->mnt.gid = current->gid;
-//  info->sock = NULL;
   init_MUTEX (&info->sem);
 
   if (cvsfs_parse_options (info, data) < 0)
@@ -211,6 +196,8 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
         if (sb->s_root)
 	{
 	  cvsfs_procfs_user_init (info->mnt.mountpoint, sb);
+
+          cvsfs_cache_get (info, "/", NULL);
 
 	  printk (KERN_INFO "cvsfs: project '%s' mounted\n", info->mnt.project);
 
@@ -245,7 +232,6 @@ static void cvsfs_put_super (struct super_block * sb)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
 
-//  cvsfs_disconnect (&(info->sock), info);
   cvsfs_cache_empty ();
   
   cvsfs_procfs_user_cleanup (info->mnt.mountpoint);
@@ -285,66 +271,3 @@ static void cvsfs_clear_inode (struct inode * inode)
     inode->u.generic_ip = NULL;
   }
 }
-
-
-/*
-static int cvsfs_readpage (struct file * file, struct page * page)
-{
-  if (!Page_Uptodate (page))
-  {
-    memset (kmap (page), 0, PAGE_CACHE_SIZE);
-    kunmap (page);
-    flush_dcache_page (page);
-    SetPageUptodate (page);
-  }
-
-  UnlockPage (page);
-
-  return 0;
-}
-
-
-
-static int cvsfs_writepage (struct page * page)
-{
-  SetPageDirty (page);
-  UnlockPage (page);
-
-  return 0;
-}
-
-
-
-static int cvsfs_prepare_write (struct file * file, struct page * page,
-                                unsigned offset, unsigned to)
-{
-  void *addr = kmap (page);
-
-  if (!Page_Uptodate (page))
-  {
-    memset (addr, 0, PAGE_CACHE_SIZE);
-    flush_dcache_page (page);
-    SetPageUptodate (page);
-  }
-
-  SetPageDirty (page);
-
-  return 0;
-}
-
-
-
-static int cvsfs_commit_write (struct file * file, struct page * page,
-                               unsigned offset, unsigned to)
-{
-  struct inode *inode = page->mapping->host;
-  loff_t pos = ((loff_t) page->index << PAGE_CACHE_SHIFT) + to;
-
-  kunmap (page);
-
-  if (pos > inode->i_size)
-    inode->i_size = pos;
-
-  return 0;
-}
-*/

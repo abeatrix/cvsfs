@@ -15,6 +15,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "cvsfs_config.h"
 #include "cache.h"
 
 #include <linux/version.h>
@@ -27,7 +28,7 @@
 
 #define CVSFS_CACHE_LEN		5
 #define CVSFS_CACHE_HASH	5
-#define	CVSFS_CACHE_TTL		30
+#define	CVSFS_CACHE_TTL		1
 
 
 
@@ -51,7 +52,7 @@ int cvsfs_cache_deldir (struct cvsfs_hashlist_node *);
 unsigned long cvsfs_cache_hash (char *);
 int cvsfs_cache_infront (unsigned long, struct cvsfs_hashlist_node *);
 int cvsfs_cache_shrink (unsigned long);
-struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info *, char *);
+struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info *, char *, char *);
 
 
 
@@ -187,11 +188,16 @@ int cvsfs_cache_shrink (unsigned long hash)
 
 
 
-struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info * info, char * name)
+struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info * info, char * name, char * version)
 {
   unsigned long hash;
   struct cvsfs_hashlist_node *node;
-
+#ifdef __DEBUG
+  if (version == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_cache_add - name %s\n", name);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_cache_add - name %s (version %s)\n", name, version);
+#endif
   hash = cvsfs_cache_hash (name);
 
   while (dir_cache.len[hash] >= CVSFS_CACHE_LEN)
@@ -210,8 +216,13 @@ struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info * info, char * na
   if (node->directory.name)
   {
     strcpy (node->directory.name, name);
-
-    if (cvsfs_loaddir (info, name, &node->directory) >= 0)
+#ifdef __DEBUG__
+    if (version == NULL)
+      printk (KERN_DEBUG "cvsfs: cvsfs_cache_add - new node allocated for %s\n", name);
+    else
+      printk (KERN_DEBUG "cvsfs: cvsfs_cache_add - new node allocated for %s (version %s)\n", name, version);
+#endif
+    if (cvsfs_loaddir (info, name, &node->directory, version) >= 0)
     {
       node->prev = NULL;
       node->next = dir_cache.hash[hash];
@@ -236,23 +247,37 @@ struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info * info, char * na
 
 
 
-struct cvsfs_directory * cvsfs_cache_get (struct cvsfs_sb_info * info, char * name)
+struct cvsfs_directory * cvsfs_cache_get (struct cvsfs_sb_info * info, char * name, char * version)
 {
   struct cvsfs_hashlist_node *node;
   unsigned long hash;
-
+#ifdef __DEBUG__
+  if (version == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - name %s\n", name);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - name %s (version %s)\n", name, version);
+#endif
   hash = cvsfs_cache_hash (name);
 
   for (node = dir_cache.hash[hash]; node != NULL; node = node->next)
     if ((strcmp (name, node->directory.name) == 0) && (node->directory.valid))
     {
       if ((CURRENT_TIME - node->directory.time) > CVSFS_CACHE_TTL)
-        return cvsfs_cache_add (info, name);
+      {
+#ifdef __DEBUG__
+        printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - cache add name %s\n", name);
+#endif
+        return cvsfs_cache_add (info, name, version);
+      }
 
       cvsfs_cache_infront (hash, node);
-
+#ifdef __DEBUG__
+      printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - return dir entry for %s\n", name);
+#endif
       return &node->directory;
     }
-
-  return cvsfs_cache_add (info, name);
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - default add cache name %s\n", name);
+#endif
+  return cvsfs_cache_add (info, name, version);
 }

@@ -58,7 +58,7 @@ struct cvsfs_sb_info;
 
 int cvsfs_cache_init ();
 int cvsfs_cache_empty ();
-struct cvsfs_directory *cvsfs_cache_get (struct cvsfs_sb_info *, char *);
+struct cvsfs_directory *cvsfs_cache_get (struct cvsfs_sb_info *, char *, char *);
 
 
 

@@ -203,7 +203,7 @@ static struct cvsfs_proc_tree * create_subdir_recursive (char * path, struct cvs
     ++ptr;
   }
 
-  element = create_child (path, S_IFDIR | S_IRUGO, parent);
+  element = create_child (path, S_IFDIR | S_IRUGO | S_IXUGO, parent);
   if (element == NULL)
   {
     remove_child (path, parent);
@@ -473,6 +473,8 @@ static int proc_cvsfs_read_status (char *buffer, char **start, off_t offset, int
   len += sprintf (buffer + len, "  CVS root ..... %s\n", info->mnt.root);
   len += sprintf (buffer + len, "  Project ...... %s\n", info->mnt.project);
   len += sprintf (buffer + len, "  Mountpoint ... %s\n", info->mnt.mountpoint);
+  len += sprintf (buffer + len, "  Fileattribs .. %04o\n", (info->mnt.file_mode & 0xfff));
+  len += sprintf (buffer + len, "  Dir attribs .. %04o\n", (info->mnt.dir_mode & 0xfff));
 
   return len;
 }
