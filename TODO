@@ -1,14 +1,16 @@
 Short term:
 -----------
 
-* Support write operations to the file system
+* Apply a method to detect changes at the remote CVS repository
+  (maybe by frequent tree queries to the CVS server)
 * make behaviour of cvsfsd configurable (/etc/cvsfs.conf ?):
   - where to place the cvs cache (actually: /var/cache/cvsfs)
   - modify debug level
   - cache cleanup
   - ...
-* Redesign cvsfsd caching subsystem
 * IOCTL interface for checkin/checkout
+* IOCTL interface to get a version tree of a CVS file
+* GUI Interface to display version tree (volunteers welcome)
 
 
 Long term:
@@ -25,4 +27,5 @@ Long term:
   writeable layer. The enables to 'update' a CD without the necessity
   to
   - copy the CD contents to the local disk
+  - update the files
   - burn a new CD

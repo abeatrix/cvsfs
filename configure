@@ -691,7 +691,7 @@ fi
 
 PACKAGE=cvsfs
 
-VERSION=1.1.2
+VERSION=1.1.3
 
 if test "`cd $srcdir && pwd`" != "`pwd`" && test -f $srcdir/config.status; then
   { echo "configure: error: source directory already configured; run "make distclean" there first" 1>&2; exit 1; }
@@ -1817,7 +1817,7 @@ done
 ac_given_srcdir=$srcdir
 ac_given_INSTALL="$INSTALL"
 
-trap 'rm -fr `echo "cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile init/Makefile cvsfs.spec" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
+trap 'rm -fr `echo "cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile include/Makefile tools/Makefile init/Makefile cvsfs.spec" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
 EOF
 cat >> $CONFIG_STATUS <<EOF
 
@@ -1904,7 +1904,7 @@ EOF
 
 cat >> $CONFIG_STATUS <<EOF
 
-CONFIG_FILES=\${CONFIG_FILES-"cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile init/Makefile cvsfs.spec"}
+CONFIG_FILES=\${CONFIG_FILES-"cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile include/Makefile tools/Makefile init/Makefile cvsfs.spec"}
 EOF
 cat >> $CONFIG_STATUS <<\EOF
 for ac_file in .. $CONFIG_FILES; do if test "x$ac_file" != x..; then

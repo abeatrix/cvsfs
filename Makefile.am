@@ -2,4 +2,4 @@
 
 EXTRA_DIST = makedevs rmdevs cvsfs.spec.in
 
-SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount init
+SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount include init tools

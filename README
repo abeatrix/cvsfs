@@ -41,6 +41,7 @@ Requirements:
     - SuSE 7.3
     - Debian 3.0
     - RedHat 7.2 (with updated Kernel 2.4.10)
+- Installed kernel includes.
 - Running network.
 - Bash 2.0 and later (for installation)
 
@@ -203,6 +204,15 @@ A working example is this project at SourceForge. The Statement is:
 
 This will mount the cvsfs CVS repository at <mountpoint>.
 
+
+Tools:
+------
+
+  cvsctl <command> [<optional parameters>]
+
+  <command> may be:
+    version	obtain version of file passed as parameter
+  
 
 Working with a cvsfs mounted file system:
 -----------------------------------------

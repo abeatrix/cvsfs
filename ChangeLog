@@ -1,3 +1,38 @@
+2002-09-05  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.3
+	* cvsfs/superblock.c (cvsfs_read_super): add check - each mount point
+	  must only be used once.
+	* cvsfsd/TModuleAction*.cpp (doit): returns true only if quit is received
+	* cvsfsd/main.cpp (main): a failed server test does not result in an
+	  abort of the daemon.
+	* cvsfsd/TConnectedSocket.cpp: missing #include <sys/time.h> added
+
+2002-09-03  Petric Frank  <pfrank@gmx.de>
+	* tools/*: new utility 'cvsctl'.
+
+2002-09-02  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/file.c (cvsfs_file_open): if O_TRUNC set send this to the daemon
+	* cvsfsd/TModuleActionTruncfile.cpp: new
+
+2002-09-01  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/file.c (cvsfs_file_ioctl): fix error in ioctl
+
+2002-08-28  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TModuleActionIoctl.cpp: new
+
+2002-08-26  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/file.c (cvsfs_file_ioctl): implement option to get version of file
+
+2002-08-24  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/file.c (cvsfs_file_ioctl): new function
+	* include: new subdirectory for common include files to allow
+	  third party programmers to write tools for cvsfs
+	* tools: new subdirectory for management tools
+
+2002-08-23  Petric Frank  <pfrank@gmx.de>
+	* cvsfs.spec.in: Add home URL
+	* README: Remove kernel numbers in sample outputs
+
 2002-08-22  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.2
 	* init/cvsfsd.default: new - a minimalistic init script used for

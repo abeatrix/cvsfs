@@ -67,7 +67,7 @@ VERSION = @VERSION@
 
 EXTRA_DIST = makedevs rmdevs cvsfs.spec.in
 
-SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount init
+SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount include init tools
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES =  cvsfs.spec

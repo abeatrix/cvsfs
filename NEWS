@@ -1,3 +1,11 @@
+Version 1.1.3:
+Added IOCTL interface for files. Actually only one function is
+supported - rettrieve version number of actual visible file.
+A new tool was created to support this:
+  cvsctl version <file path>
+A bug when a file have to be truncated (but wasn't done) has been
+fixed.
+
 Version 1.1.2:
 First version with write capabilities. You are now allowed to create
 and delete files and directories. This is limited to files and
