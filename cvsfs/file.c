@@ -30,7 +30,7 @@
 #include "util.h"
 #include "../include/cvsfs_ioctl.h"
 
-//#define __DEBUG__
+#define __DEBUG__
 
 
 
@@ -200,7 +200,6 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
   int command;
   char *retval = NULL;
   char *version;
-  limited_string *value = (limited_string *) arg;  
 
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): file_ioctl signature %d, function %d, direction %d, size %d\n",
@@ -242,61 +241,69 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
 
   switch (command)
   {
-    case CVSFS_RESCAN:		/* re-read the data of the specific file */
+    case CVSFS_RESCAN:		/* re-read the data of this file */
       if ((err = cvsfs_ioctl (info, command, fullnamebuf, &retval)) < 0)
         break;
-	
-      dentry->d_time = 1;	/* request update */
+
+      dentry->d_time = 1;	/* mark dentry dirty - request update */
       break;
 
     case CVSFS_GET_VERSION:	/* obtain the revision number */
+      {
+        limited_string value; // = (limited_string *) arg;
+
+        if (arg == 0)
+          return -EFAULT;			/* faulty parameter */
+
+	err = copy_from_user (&value, (limited_string *) arg, sizeof (limited_string));
+        if (err < 0)
+	  break;
+	
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs(%d): file_ioctl - GET_VERSION, value = %p\n", info->id, value);
+        printk (KERN_DEBUG "cvsfs(%d): file_ioctl - GET_VERSION\n", info->id);
 #endif
-      if ((value == NULL) || (value->string == NULL))
-        return -EFAULT;			/* faulty parameter */
+        if (value.string == NULL)
+          return -EFAULT;			/* faulty parameter */
 
-      if ((err = cvsfs_ioctl (info, command, fullnamebuf, &retval)) < 0)
-        break;
+        if ((err = cvsfs_ioctl (info, command, fullnamebuf, &retval)) < 0)
+          break;
 
-      size = strlen (retval) + 1;
-      if (size > value->maxsize)
-	size = value->maxsize;
+        size = strlen (retval) + 1;
+        if (size > value.maxsize)
+	  size = value.maxsize;
       
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs(%d): file_ioctl - version = >%s<\n", info->id, retval);
+        printk (KERN_DEBUG "cvsfs(%d): file_ioctl - version = >%s<\n", info->id, retval);
 #endif
       
-      err = copy_to_user (value->string, version, size);
+        err = copy_to_user (value.string, retval, size);
 
-      if (err == 0)
-        err = size;	/* return the number of bytes copied to the buffer */
+        if (err == 0)
+          err = size;	/* return the number of bytes copied to the buffer */
+      }
       break;
 
-    case CVSFS_CHECKOUT:	/* checkout a file (opt: revision number) */
-      if ((value == NULL) || (value->maxsize == 0))
-        err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
-      else
+    case CVSFS_CHECKOUT:	/* checkout a file */
+      err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
+      dentry->d_time = 1;	/* mark dentry dirty - request update */
+      break;
+      
+    case CVSFS_CHECKOUT_VERSION:	/* checkout a file (revision number given) */
       {
-        char *reqfile;
+	limited_string data;
 	
-        size = value->maxsize + strlen (namebuf) + 3;
+	err = copy_from_user (&data, (limited_string *) arg, sizeof (limited_string));
+	if (err < 0)
+	  break;
+	  
+        size = data.maxsize + strlen (namebuf) + 3;
 	if (size > CVSFS_MAX_PATH)
 	  return -ENOMEM;
-        reqfile = kmalloc (size, GFP_KERNEL);
-	
-	strcpy (reqfile, namebuf);
-	strcat (reqfile, "@@");
-	copy_from_user (&reqfile[strlen (reqfile)], value->string, size);
+	  
+	copy_from_user (&fullnamebuf[strlen (namebuf) + 2], data.string, size);
         err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
-	kfree (reqfile);
       }
-
-      if (err < 0)
-        break;
-
-      err = simple_strtol (retval, NULL, 0);	/* outcome of checkout */
-
+      dentry->d_time = 1;	/* mark dentry dirty - request update */
       break;
       
     default:
