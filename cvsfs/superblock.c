@@ -268,46 +268,60 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
         printk (KERN_ERR "cvsfs: read_super - invalid options\n");
       else
       {
+        struct cvsfs_sb_info	*check;
+
 #ifdef __DEBUG__
         printk (KERN_DEBUG "cvsfs: read_super - parameters parsed successfully.\n");
 #endif
-        cvsfs_init_root_dirent (info, &root);
+        check = cvsfs_read_lock_superblock_list ();
+	while ((check != NULL) && (strcmp (check->mount.mountpoint, info->mount.mountpoint) != 0))
+	  check = check->next;
+	  
+	cvsfs_read_unlock_superblock_list ();
+	
+	if (check == NULL)
+	{
+#ifdef __DEBUG__
+          printk (KERN_DEBUG "cvsfs: read_super - mountpoint detected unused.\n");
+#endif
+          cvsfs_init_root_dirent (info, &root);
 
 #ifdef __DEBUG__
-        printk (KERN_DEBUG "cvsfs: read_super - root entry initialized.\n");
+          printk (KERN_DEBUG "cvsfs: read_super - root entry initialized.\n");
 #endif
-        inode = cvsfs_iget (sb, &root);
-        if (inode)
-        {
-#ifdef __DEBUG__
-          printk (KERN_DEBUG "cvsfs: read_super - root inode prepared.\n");
-#endif
-          sb->s_root = d_alloc_root (inode);
-
-          if (sb->s_root)
+          inode = cvsfs_iget (sb, &root);
+          if (inode)
           {
-            cvsfs_add_superblock (info);	/* add to managed list of superblocks */
+#ifdef __DEBUG__
+            printk (KERN_DEBUG "cvsfs: read_super - root inode prepared.\n");
+#endif
+            sb->s_root = d_alloc_root (inode);
+
+            if (sb->s_root)
+            {
+              cvsfs_add_superblock (info);	/* add to managed list of superblocks */
 	    
 #ifdef __DEBUG__
-            printk (KERN_DEBUG "cvsfs: read_super - root dentry allocated.\n");
+              printk (KERN_DEBUG "cvsfs: read_super - root dentry allocated.\n");
 #endif
-	    if (cvsfs_procfs_user_init (info) == 0)
-	    {
+	      if (cvsfs_procfs_user_init (info) == 0)
+	      {
 #ifdef __DEBUG__
-              printk (KERN_DEBUG "cvsfs: read_super - init user procfs completed.\n");
+                printk (KERN_DEBUG "cvsfs: read_super - init user procfs completed.\n");
 #endif
-	      cvsfs_devfs_user_init (info);
+	        cvsfs_devfs_user_init (info);
 
-	      printk (KERN_INFO "cvsfs: project '//%s%s/%s' mounted\n", 
-	    	      info->connection.server, info->connection.root, info->connection.project);
+	        printk (KERN_INFO "cvsfs: project '//%s%s/%s' mounted\n", 
+	 	        info->connection.server, info->connection.root, info->connection.project);
 
-              return sb;
-	    }
+                return sb;
+	      }
 	    
-	    cvsfs_remove_superblock (info);
+	      cvsfs_remove_superblock (info);
+            }
           }
+          iput (inode);
         }
-        iput (inode);
       }
       kfree (info->connection.user);
       kfree (info->connection.pass);
