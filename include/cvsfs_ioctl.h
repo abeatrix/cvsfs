@@ -36,6 +36,7 @@
 #define CVSFS_RESCAN		0	/* re-evaluate file/dir attribs */
 #define CVSFS_GET_VERSION	1	/* obtain version item */
 #define CVSFS_CHECKOUT		2	/* check out file */
+#define CVSFS_CHECKOUT_VERSION	3	/* check out specific file version */
 
 /* types to be used as parameters */
 typedef struct
@@ -60,7 +61,8 @@ typedef struct
 /*               V = set by value                  */
 #define	CVSFS_IOC__RESCAN	_IO (CVSFS_IOC_MAGIC, CVSFS_RESCAN)
 #define CVSFS_IOC_XVERSION	_IOR (CVSFS_IOC_MAGIC, CVSFS_GET_VERSION, limited_string)
-#define CVSFS_IOCPVCHECKOUT	_IOW (CVSFS_IOC_MAGIC, CVSFS_CHECKOUT, limited_string)
+#define CVSFS_IOC_VCHECKOUT	_IO (CVSFS_IOC_MAGIC, CVSFS_CHECKOUT)
+#define CVSFS_IOCPVCHECKOUT	_IOW (CVSFS_IOC_MAGIC, CVSFS_CHECKOUT_VERSION, limited_string)
 
 
 
