@@ -118,11 +118,15 @@ cvsfs_handle_add_to_buffer (struct cvsfs_device_info * dev, struct cvsfs_queue *
   wait_queue_t wait;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: handle_add_to_buffer: adding (size=%d) data -->%s\n", size,  data);
+  printk (KERN_DEBUG "cvsfs: handle_add_to_buffer: adding (size=%d) data -->%s\n", size, data);
 #endif
 
   if (dev->in_use == 0)
   {
+#ifdef __DEBUG__
+    printk (KERN_DEBUG "cvsfs: handle_add_to_buffer: device closed - skip data\n");
+#endif
+
     kfree (data);
     return 0;			/* device closed - skip request */
   }
@@ -164,6 +168,10 @@ cvsfs_handle_add_to_buffer (struct cvsfs_device_info * dev, struct cvsfs_queue *
   }
   set_current_state (TASK_RUNNING);
   remove_wait_queue (&(dest->empty), &wait);
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: handle_add_to_buffer: ready to take data\n");
+#endif
 
   if (dev->in_use == 0)
   {				/* device closed - remove request */
@@ -210,7 +218,14 @@ cvsfs_handle_get_from_buffer (struct cvsfs_device_info * dev, struct cvsfs_queue
     return 0;
 
   if (dev->in_use == 0)
+#ifdef __DEBUG__
+  {
+    printk (KERN_DEBUG "cvsfs: handle_get_from_buffer - device not in use - skip request\n");
+#endif
     ret = 0;			/* device closed - skip request */
+#ifdef __DEBUG__
+  }
+#endif
 
   init_waitqueue_entry (&wait, current);
 
@@ -241,6 +256,10 @@ cvsfs_handle_get_from_buffer (struct cvsfs_device_info * dev, struct cvsfs_queue
   }
   set_current_state (TASK_RUNNING);
   remove_wait_queue (&(source->full), &wait);
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: handle_get_from_buffer - ready to present data\n");
+#endif
 
   if (dev->in_use == 0)
     ret = 0;			/* device closed - skip request */
@@ -283,6 +302,10 @@ cvsfs_add_request (struct cvsfs_sb_info * info, const char * data, int size)
   if (!data)
     return -1;
 
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): add_request - entry\n", info->id);
+#endif
+
   buf = kmalloc (size, GFP_KERNEL);
   if (!buf)
     return -1;			/* memory squeeze - abort */
@@ -300,6 +323,10 @@ cvsfs_add_request (struct cvsfs_sb_info * info, const char * data, int size)
 int
 cvsfs_retrieve_data (struct cvsfs_sb_info * info, char ** data)
 {
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): retrieve_data - entry\n", info->id);
+#endif
+
   return cvsfs_handle_get_from_buffer (&(info->device), &(info->device.in), data);
 }
 
@@ -310,6 +337,10 @@ cvsfs_retrieve_data (struct cvsfs_sb_info * info, char ** data)
 static int
 cvsfs_put_data (struct cvsfs_sb_info * info, char * data, int size)
 {
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): put_data - entry\n", info->id);
+#endif
+
   return cvsfs_handle_add_to_buffer (&(info->device), &(info->device.in), data, size);
 }
 
@@ -318,6 +349,10 @@ cvsfs_put_data (struct cvsfs_sb_info * info, char * data, int size)
 static int
 cvsfs_get_data (struct cvsfs_sb_info * info, char ** data)
 {
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): get_data - entry\n", info->id);
+#endif
+
   return cvsfs_handle_get_from_buffer (&(info->device), &(info->device.out), data);
 }
 
@@ -687,7 +722,7 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
     }
     
     info->device.out.readpos += chunk;
-    *offset += chunk;
+//    *offset += chunk;
     ret = chunk;
       
     /* last chunk read - release the buffer */
@@ -771,7 +806,7 @@ int
 cvsfs_devfs_open (struct inode * ino, struct file * f)
 {
   int			retval = 0;
-  struct cvsfs_sb_info	*info;
+  struct cvsfs_sb_info	*info = 0;
 #ifndef CONFIG_DEVFS_FS
   int			minor;
 #endif

@@ -33,7 +33,7 @@
 #include "proc.h"
 #include "util.h"
 
-//#define __DEBUG__
+#define __DEBUG__
 
 
 /* forward references - directory operations */
@@ -65,7 +65,7 @@ struct inode_operations cvsfs_dir_inode_operations = {
 						     };
 
 
-/* forward references - directory inode operations */
+/* forward references - directory dentry operations */
 static int cvsfs_lookup_validate (struct dentry *, int);
 static int cvsfs_hash_dentry (struct dentry *, struct qstr *);
 static int cvsfs_compare_dentry (struct dentry *, struct qstr *, struct qstr *);
@@ -188,7 +188,6 @@ static int cvsfs_create (struct inode * dir, struct dentry * dentry, int mode)
   d_instantiate (dentry, inode);
 
   return 0;
-  return -EACCES;
 }
 
 
@@ -217,10 +216,13 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
   inode = dentry->d_inode;
   inode->i_nlink = 0;
   inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-//  dir->i_nlink--;
+//    dir->i_nlink--;
 
   d_delete (dentry);
   
+//  if (dentry->d_parent != NULL)
+//    dentry->d_parent->d_time = 1;	/* parent dentry invalid - re-read it */
+    
   return 0;
 }
 
