@@ -23,15 +23,9 @@ cvsfsd_SOURCES = main.cpp TCache.cpp TCacheVersionedFiles.cpp \
 noinst_HEADERS = TCache.h TCacheVersionedFiles.h TCacheWorkFiles.h \
 	TCachedFile.h TConnectedSocket.h TCvsConnection.h \
 	TCvsConnectionPserver.h TCvsInterface.h TCvsInterfacePserver.h \
-	TCvsSession.h TCvsSessionPserver.h TDirectory.cpp TEntry.h TFile.h \
+	TCvsSession.h TCvsSessionPserver.h TDirectory.h TEntry.h TFile.h \
 	TFileData.h TFileVersions.h TModuleAction.h TModuleActionAttr.h \
 	TModuleActionDir.h TModuleActionGet.h TModuleActionQuit.h \
 	TModuleServer.h TMountParameters.h TSocket.h TSyslog.h TSyslogFile.h \
 	TSyslogStream.h TSyslogStreambuf.h TVersionedFile.h XException.h \
 	XPserverTimeout.h
-
-install-exec-local:
-	cp ../cvsvfsd /etc/init.d/.
-
-uninstall-local:
-	rm -f /etc/init.d/cvsvfsd
