@@ -1,3 +1,14 @@
+2001-11-20  Johan Rydberg  <johan@rydberg.com>
+
+	* configure.in: No default prefix.
+	* configure: Regenerate.
+
+	* cvsmount/Makefile.am: Install link in `/sbin'.
+	* cvsmount/Makefile.in: Regenerate.
+
+	* cvsfs/Makefile.am (install-exec-local): Run `depmod -a'.
+	* cvsfs/Makefile.in: Regenerate.
+
 2001-06-18  Petric Frank  <pfrank@gmx.de>
 * initial release
 

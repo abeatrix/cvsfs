@@ -15,3 +15,6 @@ libdir = /lib/modules/$(KERNEL_VERSION)/kernel/fs/
 pkglib_PROGRAMS = cvsfs.o
 cvsfs_o_SOURCES = cvsfs_init.c cache.c commands.c dir.c file.c \
 	inode.c proc.c procfs.c socket.c util.c
+
+install-exec-local:
+	depmod -a
