@@ -1,5 +1,5 @@
 /***************************************************************************
-                          main.cpp  -  description
+                          main.c  -  description
                              -------------------
     begin                : Sun Jun 17 18:32:49 CEST 2001
     copyright            : (C) 2001 by Petric Frank
@@ -35,7 +35,7 @@
 void help ()
 {
   printf ("\n");
-  printf ("usage: mount.cvsfs service mount-point [-o options, ...]\n\n");
+  printf ("usage: cvsmount service mount-point [-o options, ...]\n\n");
   printf ("Options:\n");
   printf ("  user=<arg>       cvs username (default: anonymous)\n");
   printf ("  password=<arg>   cvs password (default: none)\n");
@@ -43,7 +43,8 @@ void help ()
   printf ("  uid=<arg>        owner of the remote files (default: current user)\n");
   printf ("  gid=<arg>        group of the remote files (default: current group)\n");
   printf ("  fmask=<arg>      filemask of the remote files (default: current umask)\n");
-  printf ("  dmask=<arg>      filemask of the remote directories (default: current umask)\n");
+  printf ("  dmask=<arg>      filemask of the remote directories (default: current umask)\n\n");
+  printf ("The options 'uid' and 'gid' are only available for root users.\n\n");
   printf ("This command is designed to be run from within /bin/mount by giving\n");
   printf ("the option '-t cvsfs'. For example:\n");
   printf ("  mount -t cvsfs -o user=cvsuser,password=heck //server/cvsfs /cvsfs\n");

@@ -1,5 +1,5 @@
 /***************************************************************************
-                          main.cpp  -  description
+                          main.c  -  description
                              -------------------
     begin                : Mit Jun 14 18:32:49 CEST 2001
     copyright            : (C) 2001 by Petric Frank
@@ -29,7 +29,6 @@
 #include <fcntl.h>
 #include <sys/param.h>           /* defines MAXPATHLEN */
 #include <netdb.h>
-#include <unistd.h>
 #include <pwd.h>
 #include <grp.h>
 #include <arpa/inet.h>
@@ -119,8 +118,12 @@ char *current_gid ()
 char *current_umask ()
 {
   static char buffer[32];
+  unsigned long mask;
   
-  sprintf (buffer, "%lu", (unsigned long) 420 /* getumask () */);
+  mask = umask (0);
+  umask (mask);               // stupid - there is no getter-only for umask
+  
+  sprintf (buffer, "%lu", (S_IRWXU | S_IRWXG | S_IRWXO) & (~mask));
   
   return buffer;
 }
@@ -130,6 +133,20 @@ char *current_umask ()
 char *current_dmask ()
 {
   static char buffer[32];
+  unsigned long mask;
+  unsigned long attr;
+  
+  mask = umask (0);
+  umask (mask);               // stupid - there is not getter-only for umask
+
+  attr = (S_IRWXU | S_IRWXG | S_IRWXO) & (~mask);
+
+  if ((attr & S_IRUSR) != 0)
+    attr |= S_IXUSR;
+  if ((attr & S_IRGRP) != 0)
+    attr |= S_IXGRP;
+  if ((attr & S_IROTH) != 0)
+    attr |= S_IXOTH;
   
   sprintf (buffer, "%lu", (unsigned long) 493 /* getumask () */);
   
@@ -186,12 +203,19 @@ char *convert_gid (char * gid)
 
 char *convert_umask (char * umask)
 {
-  return "420";
+  static char buffer[32];
+  unsigned long mask;
+  
+  mask = strtoul (umask, NULL, 8);
+  
+  sprintf (buffer, "%lu", (S_IRWXU | S_IRWXG | S_IRWXO) & mask);
+  
+  return buffer;
 }
 
 
 
-int parse_args (int argc, char *argv[], char **data, char **share)
+int parse_args (int argc, char *argv[], char **data, char **share, int id_change_allowed)
 {
   int opt;
   int server_found = 0;
@@ -248,31 +272,37 @@ int parse_args (int argc, char *argv[], char **data, char **share)
         break;
 	
       case 'i':
-        if ((help = convert_uid (optarg)) != NULL)
-	{
-          add_option (data, "uid", help);
-	  uid_found = 1;
-	}
-	else
-	{
-          fprintf (stderr, "user id '%s' does not exist\n", optarg);
+        if (id_change_allowed == 0)
+          if ((help = convert_uid (optarg)) != NULL)
+	  {
+            add_option (data, "uid", help);
+	    uid_found = 1;
+	  }
+	  else
+	  {
+            fprintf (stderr, "user id '%s' does not exist\n", optarg);
 	  
-	  return -1;
-	}
+	    return -1;
+	  }
+	else
+          fprintf (stderr, "ownership modification (user id) is only allowed as root\n");
         break;
 	
       case 'g':
-        if ((help = convert_gid (optarg)) != NULL)
-	{
-          add_option (data, "gid", help);
-	  gid_found = 1;
-	}
-	else
-	{
-          fprintf (stderr, "group id '%s' does not exist\n", optarg);
+        if (id_change_allowed == 0)
+          if ((help = convert_gid (optarg)) != NULL)
+  	  {
+            add_option (data, "gid", help);
+	    gid_found = 1;
+	  }
+	  else
+	  {
+            fprintf (stderr, "group id '%s' does not exist\n", optarg);
 	  
-	  return -1;
-	}
+	    return -1;
+	  }
+	else
+          fprintf (stderr, "ownership modification (group id) is only allowed as root\n");
         break;
 	
       case 'f':
@@ -335,17 +365,49 @@ char *fullpath (const char *p)
   
   if (strlen (p) > (MAXPATHLEN - 1))
   {
-    fprintf (stderr, "Mount point is too long\n");
+    fprintf (stderr, "Path '%s' is too long\n", p);
     exit (1);
   }
   
   if (realpath (p, path) == NULL)
   {
-    fprintf (stderr, "Failed to find real path for mount point\n");
+    fprintf (stderr, "Failed to find real path for '%s'\n", p);
     exit (1);
   }
   
   return strdup (path);
+}
+
+
+
+void add_cache_option (char **data)
+{
+  struct passwd *uidentry;
+  char *configdir;
+    
+  if ((uidentry = getpwuid (getuid ())) != NULL)
+  {
+    configdir = (char *) malloc (strlen (uidentry->pw_dir) + 9);
+    
+    strcpy (configdir, uidentry->pw_dir);
+    strcat (configdir, "/.cvsfs/");
+  }
+  else
+  {
+    char *dir;
+    
+    dir = tempnam (NULL, NULL);
+    configdir = (char *) malloc (strlen (dir) + 2);
+    
+    strcpy (configdir, uidentry->pw_dir);
+    strcat (configdir, "/");
+    
+    free (dir); 
+  }
+  
+  add_option (data, "cache", configdir);
+    
+  free (configdir);
 }
 
 
@@ -359,6 +421,8 @@ int main(int argc, char *argv[])
   int fd;
   FILE *mtab;
   char *mount_point;
+  int ownership_setting_allowed;
+  char *cache_dir;
   
   if ((argc < 2) || (argv[1][0] == '-'))
   {
@@ -371,19 +435,29 @@ int main(int argc, char *argv[])
     fprintf (stderr, "cvsmnt must be installed suid root for direct user mounts\n");
     exit (1);
   }
+
+  if (getuid () != 0)
+    ownership_setting_allowed = 1;
+  else
+    ownership_setting_allowed = 0;
   
   mount_point = fullpath (argv[1]);
   
   ++argv;
   --argc;
   
-  if (parse_args (argc, argv, &data, &share) != 0)
+  if (parse_args (argc, argv, &data, &share, ownership_setting_allowed) != 0)
   {
     help ();
     return -1;
   }
 
   add_option (&data, "mount", mount_point);
+
+  add_cache_option (&data);
+
+  add_option (&data, "mount_user", current_uid ());
+  add_option (&data, "mount_group", current_gid ());
   
   flags = 0xC0ED0000; /* MS_MGC_VAL */
   

@@ -218,7 +218,31 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
 #endif
 	              }
 	              else
-	                printk (KERN_ERR "Invalid option '%s' passed\n", p);
+	                if (strncmp (p, "cache=", 6) == 0)
+	                {
+	                  strncpy (info->cachedir, &p[6], sizeof (info->cachedir));
+#ifdef __DEBUG__
+	                  printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - cache dir = %s\n", info->cachedir);
+#endif
+	                }
+	                else
+                          if (strncmp (p, "mount_user=", 11) == 0)
+	    		  {
+	    		    info->mount_uid = simple_strtoul (&p[11], NULL, 0);
+//#ifdef __DEBUG__
+		            printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - mount_uid = %d\n", info->mount_uid);
+//#endif
+  			  }
+	    		  else
+            		    if (strncmp (p, "mount_group=", 12) == 0)
+	    		    {
+	    		      info->mount_gid = simple_strtoul (&p[12], NULL, 0);
+//#ifdef __DEBUG__
+	    		      printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - mount_gid = %d\n", info->mount_gid);
+//#endif
+  	    		    }
+	    		    else
+	            	      printk (KERN_ERR "Invalid option '%s' passed\n", p);
   }
 
   return 0;

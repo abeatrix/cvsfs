@@ -4,6 +4,9 @@ Short term:
 * Enable the support for user selectable file and directory attributes.
 * Support versioned kernel symbols
 * Support write operations to the file system
+* File caching for not checked-out files
+* Directory caching including version numbers
+* View modification (see other files then the ones in HEAD)
 
 
 Long term:
@@ -11,4 +14,4 @@ Long term:
 
 * Enchance GNU make to support logging via this driver to evaluate the
   file dependencies.
-
+* Adapt for kernel 2.2.x ?

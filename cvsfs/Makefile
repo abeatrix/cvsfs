@@ -52,5 +52,5 @@ distclean:
 
 install:	$(RESULT_FILE)
 	install -d /lib/modules/$(KERNEL_VERSION)/kernel/fs/cvsfs
-	install $(RESULT_FILE) /lib/modules/$(KERNEL_VERSION)/kernel/fs/cvsfs/$(RESULT_FILE)
+	install -m 644 $(RESULT_FILE) /lib/modules/$(KERNEL_VERSION)/kernel/fs/cvsfs/$(RESULT_FILE)
 	depmod -a

@@ -5,7 +5,8 @@
 
 PROJECTS =	cvsfs \
 		cvsmnt \
-		cvsmount
+		cvsmount \
+		cvsumount
 
 .PHONY:	$(PROJECTS)
 

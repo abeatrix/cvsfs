@@ -38,8 +38,9 @@ First change to te cvsfs-<version> directory. Then enter 'make install'.
 This will compile all necessary files and install them to the proper
 directories. You must be root to do that !
 
-Usage:
-------
+Usage (for root users):
+-----------------------
+
   mount -t cvsfs [-o options] //<cvs-pserver>/<module> <mount point>
   
   <cvs-pserver>       The cvs pserver to access. This may be a hostname
@@ -47,7 +48,7 @@ Usage:
 		      Only ip v4 is actually supported !
   <mount point>       The directory where the cvs tree is to be mounted.
 
-Options:
+Options (comma separated list):
   user=<username>     The username to be used for authentication at the
                       cvs-pserver. If not given the user 'anaonymous' is
 		      applied.
@@ -65,14 +66,53 @@ Options:
 		      be used.
   fmask=<attribs>     The files mounted will get this file attributes.
                       If not given the current umask will be used.
+		      (for example: umask = 022 is equivalent to fmask=755)
 		      Remark: The kernel driver will unmark the 'writeable'
 		              attribute as long the file is not checked
 			      out for update.
   dmask=<attribs>     The directories mounted will get this file attributes.
                       If not given the current umask will be used.
 
+To unmout the file system simply use umount.
+Anyway you may use the cvsmount/cvsumount described below. The options 'uid'
+and 'gid' are also available in the cvsmount command for root users.
 
-		      
+
+Usage (for normal users):
+-------------------------
+
+  cvsmount //<cvs-pserver>/<module> <mount point> [-o options]
+  cvsumount <mount point>
+  
+  <cvs-pserver>       The cvs pserver to access. This may be a hostname
+                      (with or without domain) or a ip-address.
+		      Only ip v4 is actually supported !
+  <mount point>       The directory where the cvs tree is to be mounted.
+
+Options (comma seperated list):
+  user=<username>     The username to be used for authentication at the
+                      cvs-pserver. If not given the user 'anaonymous' is
+		      applied.
+  password=<secret>   The password for the username given above. If omitted
+                      the a empty password is applied.
+  cvsroot=<root>      The cvs root directory. If omitted then /cvsroot is
+                      used as default.
+  fmask=<attribs>     The files mounted will get this file attributes.
+                      If not given the current umask will be used.
+		      (for example: umask = 022 is equivalent to fmask=755)
+		      Remark: The kernel driver will unmark the 'writeable'
+		              attribute as long the file is not checked
+			      out for update.
+  dmask=<attribs>     The directories mounted will get this file attributes.
+                      If not given the current umask will be used.
+
+Due to a check in umount you have to use cvsumount instead of umount.
+
+
+
+Example:
+--------
+
 If you specify for the actual cvs tool the environment variable
 
   CVSROOT=:pserver:humbia@sorceforge.net:/cvsroot/project
@@ -82,6 +122,20 @@ will be /humbia then the following command is required:
 
   mount -t cvsfs -o user=humbia,password=secret,cvsroot=/cvsroot/project \
         //sorceforge.net/myproject /humbia
+
+or using the cvsmount command:
+
+  cvsmount //sorceforge.net/myproject /humbia \
+           -o user=humbia,password=secret,cvsroot=/cvsroot/project
+
+
+Un-mounting id done via
+
+  umount /humbia
+
+or
+
+  cvsumount /humbia
 
 
 
@@ -112,6 +166,7 @@ file systems to locate /bin/mount.<filesystem>.
 This file (in our case mount.cvsfs) is a one-line script which himself calls
 cvsmount which do the real work. Execute cvsmount without parameters to get
 a small help.
+
 If this file is found it is executed with the parameters passed to mount.
 I don't know whether or not earlier or later versions on mount have this
 behaviour. If your version does not do this search then you can use cvsmount
@@ -121,15 +176,20 @@ instead.
 Environment:
 ------------
 
-Tested (and developed) with SuSE 7.1 and 7.2 (i386).
+Tested (and developed) with SuSE 7.1 and 7.2 (i386). The kernels used are
+the delivered precompiled kernels and the official one 2.4.10.
+
 I can not guarantee that it will compile on other platforms and/or other
 linux distributions.
-The module supports only kernels 2.4.x
-The vfs module may have build problems on nonstandard linux builds with
-versions like used for SuSE 7.1 (here: 2.4.0-4GB). It refuses to load (can
-be tested with 'modprobe cvsfs') due to not matching kernel versions (expects
-2.4.0 but system says it is 2.4.0-4GB). Actually i am rather new to kernel
-programming - so a hint to solve this problem is welcome.
+
+The cvsfs kernel module supports only kernels 2.4.x
+
+The vfs module may have problems on linux builds with versioned kernel
+symbols. The driver refuses to load then. This scan be seen when doing a
+'depmod -ae' after the driver install. It states (for example) the symbol
+kmalloc as unresolved.
+Actually i am rather new to kernel programming - so a hint to solve this
+problem is welcome.
 
 
 Limitations:
@@ -137,10 +197,16 @@ Limitations:
 
 This tool actually only retrieves the file names and directories at the HEAD
 branch. Reading of files is supported (hopefully).
+
 There are some timing limits inside the kernel module for responses from
 the cvs-pserver. They may exceed for slow remote machines. Have a look to
 cvsfs/proc.c to change this limitation.
+
 Only the pserver method of cvs is supported. May be extended later.
+
+mount allows only root to define mount points and mount options. A normal
+user may use the cvsmount command instead. Call cvsmount without parameters
+to get the list of options.
 
 
 Resulting files:
@@ -158,5 +224,6 @@ cvsmnt/cvsmnt        ! /usr/bin/cvsmnt
 
 Actually there is no configure script available. So if you want the get an
 other behaviour you have to modify the Makefile's yourself.
+
 If someone provides me with a configure script - i will be glad since my
 knowledge on that subject is very low.

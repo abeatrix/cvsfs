@@ -39,4 +39,4 @@ distclean:
 
 
 install:	$(RESULT_FILE)
-	install $(RESULT_FILE) /usr/bin/$(RESULT_FILE)
+	install -m 4755 $(RESULT_FILE) /usr/bin/$(RESULT_FILE)

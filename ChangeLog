@@ -19,3 +19,7 @@
 * Support mount options to give the mounted files defined uid's and gid's
 * Allow mount options to set the file and directory attributes (but not
   implemented - the don't give an error message)
+
+2001/11/18:
+* Activate the setting of file/directory mode setting in mount command
+* Provide cvsumount to unmount file systems mounted via cvsmount.

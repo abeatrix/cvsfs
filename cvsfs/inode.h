@@ -30,6 +30,7 @@
 
 #define CVSFS_MAXPATHLEN	1024
 #define CVSFS_MAXVERLEN		16
+#define CVSFS_MAXPROJECT	64
 #define CVSFS_MAX_USER		64
 #define CVSFS_MAX_PASS		64
 #define IPV4_MAX_ADDR		16
@@ -45,7 +46,7 @@ struct cvsfs_mount_data
   __kernel_mode_t	dir_mode;
   char			server[IPV4_MAX_ADDR];
   char			root[CVSFS_MAXPATHLEN];
-  char			project[CVSFS_MAXPATHLEN];
+  char			project[CVSFS_MAXPROJECT];
   char			mountpoint[CVSFS_MAXPATHLEN];
 };
 
@@ -55,6 +56,9 @@ struct cvsfs_sb_info
   struct cvsfs_mount_data	mnt;
   char				user[CVSFS_MAX_USER];
   char				pass[CVSFS_MAX_PASS];
+  char				cachedir[CVSFS_MAXPATHLEN];
+  __kernel_uid_t		mount_uid;
+  __kernel_gid_t		mount_gid;
   struct semaphore		sem;
 };
 
