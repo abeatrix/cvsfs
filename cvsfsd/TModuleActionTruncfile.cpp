@@ -60,7 +60,6 @@ bool TModuleActionTruncfile::doit (TCvsInterface & interface)
 
     if (size != 0)
     {
-      std::ostrstream buffer;
       std::string path = buf;
       std::string version;
 
