@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TFunctionVersion.h  -  description
+                          TFunctionCheckout.h  -  description
                              -------------------
-    begin                : Thu Sep 5 05:36:19 CEST 2002
+    begin                : Thu Sep 6 23:38:19 CEST 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -19,7 +19,7 @@
 #include <config.h>
 #endif
 
-#include "TFunctionVersion.h"
+#include "TFunctionCheckout.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -31,13 +31,13 @@
 
 
 
-TFunctionVersion::TFunctionVersion ()
+TFunctionCheckout::TFunctionCheckout ()
 {
 }
 
 
 
-bool TFunctionVersion::DoIt (int argc, char * argv [])
+bool TFunctionCheckout::DoIt (int argc, char * argv [])
 {
   if (argc < 1)
   {
@@ -55,21 +55,27 @@ bool TFunctionVersion::DoIt (int argc, char * argv [])
     return false;
   }
 
-  limited_string fileversion;
+  int err;
 
-  fileversion.string = new char[64];
-  fileversion.maxsize = 64;
+  if (argc > 1)
+  {		// request a specific version
+    limited_string fileversion;
 
-  int err = ioctl (fd, CVSFS_IOC_XVERSION, &fileversion);
-  
+    fileversion.maxsize = strlen (argv[1]) + 1;
+    fileversion.string = new char[fileversion.maxsize];
+    strcpy (fileversion.string, argv[1]);
+
+    err = ioctl (fd, CVSFS_IOCPVCHECKOUT, &fileversion);
+
+    delete [] fileversion.string;
+  }
+  else  
+    err = ioctl (fd, CVSFS_IOC_VCHECKOUT);
+
   close (fd);
   
-  if (err >= 0)
-    std::cout << fileversion.string << std::endl;
-  else
+  if (err < 0)
     std::cerr << "  ioctl error code " << err << " (" << strerror (errno) << ")" << std::endl;
 
-  delete [] fileversion.string;
-  
   return true;
 }

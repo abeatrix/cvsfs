@@ -71,9 +71,11 @@ INCLUDES = -I../include
 
 bin_PROGRAMS = cvsctl
 
-cvsctl_SOURCES = main.cpp TFunction.cpp TFunctionVersion.cpp TFunctionServer.cpp
+cvsctl_SOURCES = main.cpp TFunction.cpp TFunctionCheckout.cpp 	TFunctionVersion.cpp TFunctionServer.cpp
 
-noinst_HEADERS = TFunction.h TFunctionVersion.h TFunctionServer.h
+
+noinst_HEADERS = TFunction.h TFunctionCheckout.h TFunctionVersion.h 	TFunctionServer.h
+
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(bin_PROGRAMS)
@@ -83,8 +85,8 @@ DEFS = @DEFS@ -I. -I$(srcdir)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-cvsctl_OBJECTS =  main.o TFunction.o TFunctionVersion.o \
-TFunctionServer.o
+cvsctl_OBJECTS =  main.o TFunction.o TFunctionCheckout.o \
+TFunctionVersion.o TFunctionServer.o
 cvsctl_LDADD = $(LDADD)
 cvsctl_DEPENDENCIES = 
 cvsctl_LDFLAGS = 
@@ -100,8 +102,8 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-DEP_FILES =  .deps/TFunction.P .deps/TFunctionServer.P \
-.deps/TFunctionVersion.P .deps/main.P
+DEP_FILES =  .deps/TFunction.P .deps/TFunctionCheckout.P \
+.deps/TFunctionServer.P .deps/TFunctionVersion.P .deps/main.P
 SOURCES = $(cvsctl_SOURCES)
 OBJECTS = $(cvsctl_OBJECTS)
 

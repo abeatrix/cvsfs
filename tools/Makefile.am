@@ -6,6 +6,8 @@ INCLUDES = -I../include
 
 bin_PROGRAMS = cvsctl
 
-cvsctl_SOURCES = main.cpp TFunction.cpp TFunctionVersion.cpp TFunctionServer.cpp
+cvsctl_SOURCES = main.cpp TFunction.cpp TFunctionCheckout.cpp \
+	TFunctionVersion.cpp TFunctionServer.cpp
 
-noinst_HEADERS = TFunction.h TFunctionVersion.h TFunctionServer.h
+noinst_HEADERS = TFunction.h TFunctionCheckout.h TFunctionVersion.h \
+	TFunctionServer.h
