@@ -1,10 +1,31 @@
+2002-09-14  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.7
+	* cvsfs/file.c (cvsfs_file_setattr): new - allow change file attributes
+	* cvsfsd/TCacheSystem*.*: add interface for changing file attributes
+        * cvsfsd/TCacheManager.*: add interface for changing file attributes
+
+2002-09-13  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TModuleActionSetattr.*: new - handle 'set attribute' request
+	  from kernel module.
+	* cvsfsd/main.c: add request handler TModuleActionSetattr
+	* cvsfsd/TInterface.h: add prototype for SetAttr
+	* cvsfsd/TInterfacePserver.*: support setting file attribute
+
+2002-09-13  Carlos Jorge Gameiro Duarte <carlos.gameiro@corp.vodafone.pt>
+	* cvsfsd/TModuleAction*.cpp: changed ostrstream to ostringstream.
+	  This allows to compile cvsfsd with gcc 3.2 without warnings.
+	* cvsfsd/TCvsInterfacePserver.cpp: surround _GNU_SOURCE by #ifdef
+	  to prevent double definition of this macro.
+
 2002-09-12  Petric Frank  <pfrank@gmx.de>
-	* configure.in: add check for include file streambuf. If this file
+        * configure.in: add check for include file streambuf. If this file
 	  does not exist streambuf.h should be used instead.
+        * cvsfs/dir.c (cvsfs_setattr): new - allow to change file/dir attributes
+	* cvsfs/proc.* (cvsfs_change_attr): new - send request to daemon
 
 2002-09-12  Carlos Jorge Gameiro Duarte <carlos.gameiro@corp.vodafone.pt>
 	* cvsfsd/*: sent in a patch to get cvsfs compiled with gcc 3.2.
-	  The patch was applied. Compiles well with gcc 2.95.3
+          The patch was applied. Compiles well with gcc 2.95.3
 
 2002-09-12  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.6
