@@ -367,6 +367,48 @@ unsigned long cvsfs_convert_time (char *ptr, char **newptr)
 
 
 
+umode_t cvsfs_convert_attr_single (char *ptr, umode_t actual,
+                                   umode_t reset, umode_t read, umode_t write, umode_t execute)
+{
+  char *loop;
+  
+  actual &= ~reset;
+
+  for (loop = ptr; (*loop != '\0') &&
+                   ((*loop == 'r') || (*loop == 'w') || (*loop == 'x')); ++loop)
+  {
+    switch (*loop)
+    {
+      case 'r': actual |= read;		break;
+      case 'w': actual |= write;	break;
+      case 'x': actual |= execute;	break;
+    }
+  }
+  
+  return actual;
+}
+
+
+
+umode_t cvsfs_convert_attr (char *ptr, umode_t actual, char **newptr)
+{
+  if (strncmp (ptr, "u=", 2) == 0)
+    actual = cvsfs_convert_attr_single (&(ptr[2]), actual, S_IRWXU, S_IRUSR, S_IWUSR, S_IXUSR);
+  
+  if (strncmp (ptr, "g=", 2) == 0)
+    actual = cvsfs_convert_attr_single (&(ptr[2]), actual, S_IRWXG, S_IRGRP, S_IWGRP, S_IXGRP);
+  
+  if (strncmp (ptr, "o=", 2) == 0)
+    actual = cvsfs_convert_attr_single (&(ptr[2]), actual, S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH);
+
+  if ((*newptr = strchr (ptr, ',')) == NULL)
+    *newptr = strchr (ptr, '\0');
+  
+  return actual;
+}
+
+
+
 int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_entry * entry)
 {
   struct socket *sock;
@@ -420,6 +462,15 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
       if (strncmp (line, "Mod-time ", 9) == 0)
       {
         entry->date = cvsfs_convert_time (&line[9], &ptr);
+      }
+
+      if (strncmp (line, "u=", 2) == 0)
+      {
+        entry->mode = cvsfs_convert_attr (line, entry->mode, &ptr);
+	if (*ptr == ',')
+          entry->mode = cvsfs_convert_attr (ptr, entry->mode, &ptr);
+	if (*ptr == ',')
+          entry->mode = cvsfs_convert_attr (ptr, entry->mode, &ptr);
       }
       
       if (isdigit (*line) != 0)
@@ -567,12 +618,16 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
 	  else
             printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s' (version %s)\n", p->entry.name, p->entry.version);
 #endif
-          p->entry.mode |= info->mnt.dir_mode; // S_IFDIR | S_IRUSR | S_IXUSR;
+          p->entry.mode |= info->mnt.dir_mode;
         }
         else
           if (i == 1)				/* file */
           {
+            p->entry.mode |= info->mnt.file_mode;	// default setting
+
             cvsfs_get_fattr (info, basedir, &(p->entry));
+	    
+	    p->entry.mode &= ~S_IWUGO;		// if the file is not checked out
 #ifdef __DEBUG__
 	    if (p->entry.version != NULL)
               printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s' - version %s\n", res, p->entry.version);
