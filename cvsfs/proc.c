@@ -640,9 +640,9 @@ cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retva
   int size;
   int ret;
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): ioctl #%d\n", info->id, action);
-//#endif
+#endif
 
   sprintf (number, "%d", action);
 
@@ -658,17 +658,17 @@ cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retva
     sprintf (cmd, "ioctl %s %s", number, parm);
   else
     sprintf (cmd, "ioctl %s", number);
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): ioctl - send request -->%s\n", info->id, cmd);
-//#endif    
+#endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
   if (ret <= 0)		/* error, daemon not running or empty response */
     return -EIO;
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): ioctl - returned from daemon -->%s\n", info->id, response);
-//#endif    
+#endif    
 
   ret = simple_strtoul (response, &ptr, 0);
   if (*ptr != '\0')

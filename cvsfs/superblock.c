@@ -363,21 +363,21 @@ cvsfs_put_super (struct super_block * sb)
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
   int id = info->id;
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): put_super - '%s' unmounted\n", id, info->mount.mountpoint);
-//#endif
+#endif
 
   cvsfs_devfs_user_cleanup (info);
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): put_super - devfs shut down\n", id);
-//#endif
+#endif
 
   cvsfs_procfs_user_cleanup (info);
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): put_super - procfs shut down\n", id);
-//#endif
+#endif
 
   cvsfs_remove_superblock (info);
 
