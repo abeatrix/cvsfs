@@ -29,9 +29,9 @@ elif [ -d "/etc/rc2.d" ]; then
     echo -n "Detected Debian installation"
     SCRIPT=cvsfsd.Debian
 else
-    echo "Unsupported distribution - install (maybe adapted) init script manually"
-    echo "See cvsfsd.SuSE or cvsfsd.Debian for an example."
-    exit 0
+    echo "Unsupported distribution - install a default init script"
+    echo "Changes to /etc/init.d/cvsfsd may be necessary."
+    SCRIPT=cvsfsd.default
 fi
 
 # Install the init script. There is one variable that must be replaced

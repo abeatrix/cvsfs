@@ -65,9 +65,9 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
-EXTRA_DIST = makeinit cvsfsd.Debian cvsfsd.RedHat cvsfsd.SuSE
+EXTRA_DIST = makeinit cvsfsd.Debian cvsfsd.RedHat cvsfsd.SuSE cvsfsd.default
 
-noinst_SCRIPTS = makeinit cvsfsd.Debian cvsfsd.RedHat cvsfsd.SuSE
+noinst_SCRIPTS = makeinit cvsfsd.Debian cvsfsd.RedHat cvsfsd.SuSE cvsfsd.default
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 SCRIPTS =  $(noinst_SCRIPTS)

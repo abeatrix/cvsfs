@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# start/stop inetd super server.
+
+# This variable will be set at installation time
+CVSFSD_PROGRAM
+
+if ! [ -x "$CVSFSD_PROGRAM" ]; then
+	exit 0
+fi
+
+case "$1" in
+    start)
+	echo -n "Starting cvs virtual filesystem daemon:"
+	if [ ! -d /proc/cvsfs ]; then
+	    echo -n " kernel module"
+	    /sbin/modprobe cvsfs
+	fi
+	echo -n " cvsfsd"
+	$CVSFSD_PROGRAM &
+	echo "."
+	;;
+    stop)
+	echo -n "Stopping cvs virtual filesystem daemon:"
+	echo -n " cvsfsd"
+	kill `ps -o "%p" --no_headers -C cvsfsd | head -n 1`
+	echo "."
+	;;
+    restart)
+	echo -n "Restarting cvs virtual filesystem daemon:"
+	echo -n " cvsfsd"
+	start-stop-daemon --stop --quiet --oknodo --exec $CVSFSD_PROGRAM
+	start-stop-daemon --start --quiet --exec $CVSFSD_PROGRAM
+	echo "."
+	;;
+    *)
+	echo "Usage: /etc/init.d/cvsvfsd {start|stop|restart}"
+	exit 1
+	;;
+esac
+
+exit 0
