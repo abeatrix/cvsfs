@@ -25,7 +25,7 @@
 
 
 
-const std::string BaseDir = "/remote   ";
+const std::string BaseDir = "/remote";
 const std::string VersionDelimiter = "@@";
 
 

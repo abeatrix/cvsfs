@@ -324,6 +324,8 @@ bool TCacheSystem::FileCreate (const std::string & name, int mode) const
 
   close (fd);
 
+  chmod (path.c_str (), mode);	// set mode independent of current umask
+
   return true;
 }
 

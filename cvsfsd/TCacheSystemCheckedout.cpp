@@ -163,6 +163,9 @@ TEntry * TCacheSystemCheckedout::AddFile (TDirectory & root,
   if (pos == std::string::npos)		// to be sure !
     return 0;
 
+  filename.erase (pos);
+  version.erase (0, pos + VersionDelimiter.length ());
+
   TEntry * entry = TCacheSystem::AddFile (root, filename, data);
   if ((entry) && (entry->isA () == TEntry::FileEntry))
   {
@@ -181,7 +184,7 @@ bool TCacheSystemCheckedout::EvaluateFullName (const std::string & path,
 {
   std::string::size_type pos = path.rfind (VersionDelimiter);
 
-  if (pos == std::string::npos)
+  if (pos != std::string::npos)
   {
     fullpath = path;
 
@@ -190,18 +193,20 @@ bool TCacheSystemCheckedout::EvaluateFullName (const std::string & path,
 
   // no exact version given - do a search
   std::string name = path;
+  std::string dir = fAbsoluteBase;
 
   fullpath = path;
   pos = fullpath.rfind ('/');
-  if (pos == std::string::npos)
-    fullpath = "";
-  else
+  if (pos != std::string::npos)
   {
-    fullpath.erase (pos);
-    name.erase (0, pos + 1);
+    fullpath.erase (pos);	// strip the file name
+    dir += "/";			// append the requested directory
+    dir += fullpath;
+    name.erase (0, pos + 1);	// keep file name alone
   }
+  else
+    fullpath = "";
 
-  std::string dir = fAbsoluteBase + "/" + fullpath;
   name += VersionDelimiter;
 
   // now do the directory scan
@@ -214,9 +219,11 @@ bool TCacheSystemCheckedout::EvaluateFullName (const std::string & path,
   }
 
   if (direntry != NULL)
-  {
-    fullpath += "/";
-    fullpath += direntry->d_name;
+  {				// file found
+    if (fullpath.length () > 0)
+      fullpath += "/";
+
+    fullpath += direntry->d_name;	// append full file name
   }
 
   closedir (cachedir);
