@@ -25,6 +25,7 @@
 // forward references
 class TConnectedSocket;
 class TCvsConnection;
+class TCvsPserverCommand;
 
 
 
@@ -37,16 +38,21 @@ class TCvsSessionPserver : public TCvsSession
     virtual bool Test ();
 
     virtual bool SendRdiff (const std::string &) const;
-    virtual bool SendCo (const std::string &, const std::string &) const;
+//    virtual bool SendCo (const std::string &, const std::string &) const;
+    virtual bool SendCiInit (const std::string &, const std::string &,
+                             const std::string &, const std::string &) const;
+    virtual bool SendCiExit (const std::string &) const;
+
+    virtual bool ExecuteCommand (TCvsPserverCommand &);
 
     virtual std::string ReadLine () const;
     virtual int ReadRaw (char *, int) const;
 
-  private:
-    bool DoLogin (bool) const;
-
     bool execute (const std::string &) const;
     bool execute (const char *, int) const;
+
+  private:
+    bool DoLogin (bool) const;
 
     TConnectedSocket	*fSocket;
     std::string		fEncryptedPassword;

@@ -34,6 +34,14 @@ TVersionedFile::TVersionedFile (const std::string & name, const std::string & ve
 
 
 
+TVersionedFile::TVersionedFile (const TVersionedFile & clone)
+: TEntry (clone), fHeadVersion (clone.fHeadVersion),
+  fDataValid (clone.fDataValid), fFileVersions (clone.fFileVersions)
+{
+}
+
+
+
 TVersionedFile::~TVersionedFile ()
 {
 }
@@ -96,6 +104,16 @@ void TVersionedFile::AddVersion (const std::string & version, const TFileData & 
 
   if (version == fHeadVersion)
     fDataValid = true;
+}
+
+
+
+void TVersionedFile::SetHeadVersion (const std::string & version)
+{
+  fHeadVersion = version;
+
+  if (!fFileVersions.FindVersion (version))
+    fDataValid = false;
 }
 
 

@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TCvsSession.h  -  description
+                          TCvsPserverCommandCheckout.h  -  description
                              -------------------
-    begin                : Mon Jun 11 18:32:49 CEST 2002
+    begin                : Fri Sep 27 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -15,37 +15,35 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef __TCVSSESSION_H__
-#define __TCVSSESSION_H__
+#ifndef __TCVSPSERVERCOMMANDCHECKOUT_H__
+#define __TCVSPSERVERCOMMANDCHECKOUT_H__
 
+#include "TCvsPserverCommand.h"
 #include <string>
-
-// forward reference
-class TCvsConnection;
-
+#include <iostream>
+#include "TFileData.h"
 
 
-class TCvsSession
+
+class TCvsPserverCommandCheckout : public TCvsPserverCommand
 {
   public:
-    TCvsSession (TCvsConnection *);
-    virtual ~TCvsSession ();
+    TCvsPserverCommandCheckout (const std::string &, const std::string &,
+				std::ostream *);
+    virtual ~TCvsPserverCommandCheckout ();
 
-    virtual bool Test () = 0;
+    virtual bool execute (TCvsSessionPserver &);
 
-    virtual bool SendRdiff (const std::string &) const = 0;
-//    virtual bool SendCo (const std::string &, const std::string &) const = 0;
-    virtual bool SendCiInit (const std::string &, const std::string &,
-                             const std::string &, const std::string &) const = 0;
-    virtual bool SendCiExit (const std::string &) const = 0;
-
-    virtual std::string ReadLine () const = 0;
-    virtual int ReadRaw (char *, int) const = 0;
-
-    const TCvsConnection & GetConnection () const { return *fConnection; }
+    const TFileData & GetData () const { return fFileData; }
 
   protected:
-    TCvsConnection	*fConnection;
+    std::string		fPath;
+    std::string		fVersion;
+    std::ostream	*fFileStream;
+    TFileData		fFileData;
+    bool		fDataReceived;
+
+    virtual bool processLine (TCvsSessionPserver &, const std::string &);
 };
 
 

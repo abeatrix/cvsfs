@@ -54,7 +54,7 @@ main(int argc, char *argv[])
   char name[32];
   TSyslog *log = TSyslog::instance ("cvsfsd", TSyslog::Daemon);
 
-  log->debug.Disable ();	// disable debug logging
+//  log->debug.Disable ();	// disable debug logging
 
   program_version ();
 

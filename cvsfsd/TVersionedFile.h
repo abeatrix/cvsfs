@@ -32,6 +32,7 @@ class TVersionedFile : public TEntry
 {
   public:
     TVersionedFile (const std::string &, const std::string &);
+    TVersionedFile (const TVersionedFile &);
     virtual ~TVersionedFile ();
 
     virtual TEntry * Clone () const;
@@ -46,8 +47,8 @@ class TVersionedFile : public TEntry
 
     void AddVersion (const std::string &, const TFileData &);
 
-    void SetHeadVersion (const std::string & version) { fHeadVersion = version; }
-    virtual void SetData (const TFileData & data);
+    void SetHeadVersion (const std::string &);
+    virtual void SetData (const TFileData &);
 
     virtual bool ValidData () const { return fDataValid; }
 

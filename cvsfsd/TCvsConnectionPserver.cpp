@@ -39,7 +39,7 @@ TCvsConnectionPserver::~TCvsConnectionPserver ()
 
 
 
-TCvsSession * TCvsConnectionPserver::Open ()
+TCvsSessionPserver * TCvsConnectionPserver::Open ()
 {
   // connect to CVS pserver
   TConnectedSocket *connection = fSocket.Connect (2401, fServer.c_str ());

@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TCvsSession.h  -  description
+                          TCvsPserverCommandTree.h  -  description
                              -------------------
-    begin                : Mon Jun 11 18:32:49 CEST 2002
+    begin                : Wed Oct 2 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -15,37 +15,35 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef __TCVSSESSION_H__
-#define __TCVSSESSION_H__
+#ifndef __TCVSPSERVERCOMMANDTREE_H__
+#define __TCVSPSERVERCOMMANDTREE_H__
 
+#include "TCvsPserverCommand.h"
 #include <string>
+#include <iostream>
 
 // forward reference
-class TCvsConnection;
+class TDirectory;
 
 
 
-class TCvsSession
+class TCvsPserverCommandTree : public TCvsPserverCommand
 {
   public:
-    TCvsSession (TCvsConnection *);
-    virtual ~TCvsSession ();
+    TCvsPserverCommandTree (const std::string &, TDirectory &);
+    virtual ~TCvsPserverCommandTree ();
 
-    virtual bool Test () = 0;
+    virtual bool execute (TCvsSessionPserver &);
 
-    virtual bool SendRdiff (const std::string &) const = 0;
-//    virtual bool SendCo (const std::string &, const std::string &) const = 0;
-    virtual bool SendCiInit (const std::string &, const std::string &,
-                             const std::string &, const std::string &) const = 0;
-    virtual bool SendCiExit (const std::string &) const = 0;
+  private:
+    std::string		fRootPath;
+    TDirectory		&fTree;
+    TDirectory		*fOldTree;
+    TDirectory		*fCurrentDir;
+    TDirectory		*fCurrentOldDir;
+    std::string		fCurrentPath;
 
-    virtual std::string ReadLine () const = 0;
-    virtual int ReadRaw (char *, int) const = 0;
-
-    const TCvsConnection & GetConnection () const { return *fConnection; }
-
-  protected:
-    TCvsConnection	*fConnection;
+    virtual bool processLine (TCvsSessionPserver &, const std::string &);
 };
 
 

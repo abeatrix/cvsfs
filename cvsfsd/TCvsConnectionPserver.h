@@ -20,6 +20,9 @@
 
 #include "TCvsConnection.h"
 
+// forward reference
+class TCvsSessionPserver;
+
 
 
 class TCvsConnectionPserver : public TCvsConnection
@@ -30,7 +33,8 @@ class TCvsConnectionPserver : public TCvsConnection
 
     const std::string & GetProject () const { return fProject; }
 
-    virtual TCvsSession *Open ();
+//    virtual TCvsSession *Open ();
+    TCvsSessionPserver *Open ();
 
   private:
     TSocket     fSocket;

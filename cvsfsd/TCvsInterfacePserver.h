@@ -76,8 +76,6 @@ class TCvsInterfacePserver : public TCvsInterface
     TCacheSystemVersioned	*fRemote;
     TCacheSystemCheckedout	*fCheckedOut;
     TCacheSystemSimple		*fLocal;
-//    TCacheVersionedFiles	fVersionedCache;
-//    TCacheWorkFiles		fWorkCache;
 
     bool LoadTree ();
     bool LoadCvsTree ();
@@ -85,16 +83,13 @@ class TCvsInterfacePserver : public TCvsInterface
     void RemoveEntry (const std::string &);
 
     TDirectory *AllocateDir (TDirectory *, const std::string &) const;
-    TVersionedFile *AddVersionedFile (TDirectory *, const std::string &, const std::string &) const;
-    RDiffResult AnalyzeRDiffLine (const std::string &, std::string &, std::string &) const;
 
     bool LoadAttribute (const std::string &, const std::string &, TVersionedFile &);
-    CoResult AnalyzeCoLine (const std::string &, std::string &) const;
-    int ConvertTime (const std::string &) const;
-    int ConvertAttr (const std::string &) const;
 
     const TFile * LoadFile (const std::string &, const std::string &, TVersionedFile &);
     TDirectory * GetParentDirectory (const std::string &, std::string &);
+
+    bool StoreFile (const std::string &, const std::string &, TFile &, std::string);
 
     TEntry * CloneEntry (TEntry *, TCacheManager::size_type) const;
 };

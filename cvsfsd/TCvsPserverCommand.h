@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TCvsSession.h  -  description
+                          TCvsPserverCommand.h  -  description
                              -------------------
-    begin                : Mon Jun 11 18:32:49 CEST 2002
+    begin                : Thu Sep 26 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -15,37 +15,30 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef __TCVSSESSION_H__
-#define __TCVSSESSION_H__
+#ifndef __TCVSPSERVERCOMMAND_H__
+#define __TCVSPSERVERCOMMAND_H__
 
 #include <string>
 
 // forward reference
-class TCvsConnection;
+class TCvsSessionPserver;
 
 
 
-class TCvsSession
+class TCvsPserverCommand
 {
   public:
-    TCvsSession (TCvsConnection *);
-    virtual ~TCvsSession ();
+    TCvsPserverCommand () {}
+    virtual ~TCvsPserverCommand ();
 
-    virtual bool Test () = 0;
-
-    virtual bool SendRdiff (const std::string &) const = 0;
-//    virtual bool SendCo (const std::string &, const std::string &) const = 0;
-    virtual bool SendCiInit (const std::string &, const std::string &,
-                             const std::string &, const std::string &) const = 0;
-    virtual bool SendCiExit (const std::string &) const = 0;
-
-    virtual std::string ReadLine () const = 0;
-    virtual int ReadRaw (char *, int) const = 0;
-
-    const TCvsConnection & GetConnection () const { return *fConnection; }
+    virtual bool execute (TCvsSessionPserver &) = 0;
 
   protected:
-    TCvsConnection	*fConnection;
+    bool processData (TCvsSessionPserver &);
+    virtual bool processLine (TCvsSessionPserver &, const std::string &) = 0;
+
+    int CvsAttr2SysAttr (const std::string &);
+    void SysAttr2CvsAttr (int, std::string &);
 };
 
 

@@ -23,6 +23,7 @@
 
 #include "TConnectedSocket.h"
 #include "TCvsConnection.h"
+#include "TCvsPserverCommand.h"
 #include "TSyslog.h"
 #include "XPserverTimeout.h"
 
@@ -81,6 +82,16 @@ TCvsSessionPserver::~TCvsSessionPserver ()
 bool TCvsSessionPserver::Test ()
 {
   return DoLogin (false);
+}
+
+
+
+bool TCvsSessionPserver::ExecuteCommand (TCvsPserverCommand & command)
+{
+  if (!DoLogin (true))
+    return false;
+
+  return command.execute (*this);
 }
 
 
@@ -195,7 +206,7 @@ bool TCvsSessionPserver::SendRdiff (const std::string & base) const
 }
 
 
-
+/*
 bool TCvsSessionPserver::SendCo (const std::string & path,
 				 const std::string & version) const
 {
@@ -224,6 +235,71 @@ bool TCvsSessionPserver::SendCo (const std::string & path,
     return false;
 
   return execute ("co");
+}
+*/
+
+
+bool TCvsSessionPserver::SendCiInit (const std::string & path,
+				     const std::string & name,
+				     const std::string & version,
+				     const std::string & commitinfo) const
+{
+  if (!DoLogin (true))
+    return false;
+
+  // send commit info
+  if (!execute ("Argument -m"))
+    return false;
+
+  std::string::size_type pos = commitinfo.find ('\n');
+  if (pos == std::string::npos)
+  {
+    if (!execute ("Argument " + commitinfo))
+      return false;
+  }
+  else
+  {
+    std::string part = commitinfo;
+    std::string next = commitinfo;
+    part.erase (pos);
+
+    if (!execute ("Argument " + part))
+      return false;
+
+    next.erase (0, pos + 1);
+    while ((pos = next.find ('\n')) != std::string::npos)
+    {
+      part = next;
+      part.erase (pos);
+      next.erase (0, pos + 1);
+
+      if (!execute ("Argumentx " + part))
+        return false;
+    }
+    if (!execute ("Argumentx " + next))
+      return false;
+  }
+
+  if (!execute ("Directory ."))
+    return false;
+
+  if (!execute (fConnection->GetRoot () + path))
+    return false;
+
+  if (!execute ("Entry /" + name + "/" + version + "///"))
+    return false;
+
+  return execute ("Modified " + name);
+}
+
+
+
+bool TCvsSessionPserver::SendCiExit (const std::string & name) const
+{
+  if (!execute ("Argument " + name))
+    return false;
+
+  return execute ("ci");
 }
 
 

@@ -40,7 +40,7 @@ class TCvsConnection
     const std::string & GetProject () const	{ return fProject; }
     const std::string & GetMountPoint () const	{ return fMountPoint; }
 
-    virtual TCvsSession *Open () = 0;
+//    virtual TCvsSession *Open () = 0;
 
   protected:
     std::string fServer;
