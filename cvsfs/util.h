@@ -20,8 +20,15 @@
 
 
 
+/* forward reference */
+struct dentry;
+
+
+
+char * strdup (const char *);
 char * cvsfs_skip_whitespace (char *);
 char * cvsfs_rtrim (char *);
+int cvsfs_get_name (struct dentry *, char *, int);
 
 
 
