@@ -36,7 +36,7 @@ struct cvsfs_fattr
   uid_t				f_uid;
   gid_t				f_gid;
   kdev_t			f_rdev;
-  off_t				f_size;
+  loff_t			f_size;
   time_t			f_atime;
   time_t			f_mtime;
   time_t			f_ctime;

@@ -264,28 +264,72 @@ const TEntry * TCvsInterfacePserver::MakeFile (const std::string & path,
   if (!dir)
     return 0;
 
+  // allocate the file in the working cache (with size = 0)
   if (!fWorkCache.MakeFile (fullpath, mode))
     return 0;
 
   TFile *file = new TFile (filename, "");
   if (!file)
+    return 0;
+
+  // add the file to the tree info
+  TFileData dummy;
+
+  if (!fWorkCache.FileData (fullpath, dummy))
   {
-    TFileData dummy;
+    delete file;
 
-    if (!fWorkCache.FileData (fullpath, dummy))
-    {
-      delete file;
-
-      return 0;
-    }
-
-    dir->SetData (dummy);
-    dir->SetSource (TEntry::Local);
-
-    dir->AddEntry (file);
+    return 0;
   }
 
+  file->SetData (dummy);
+  file->SetSource (TEntry::Local);
+
+  dir->AddEntry (file);
+
   return file;
+}
+
+
+
+int TCvsInterfacePserver::RemoveFile (const std::string & path,
+				      const std::string & version)
+{
+  if (!LoadTree ())
+    return 0;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  std::string filename;
+
+  TDirectory *dir = GetParentDirectory (fullpath, filename);
+  if (!dir)
+    return ENOENT;	// parent directory not found
+
+  TEntry *entry = dir->FindEntry (filename);
+  if (entry == 0)
+    return ENOENT;
+
+  if (entry->isA () == TEntry::DirEntry)
+    return EISDIR;
+
+  if (entry->GetSource () != TEntry::Local)
+    return EROFS;
+
+  int retval = fWorkCache.RemoveFile (fullpath);
+
+  if (retval == 0)
+    dir->RemoveEntry (entry);
+
+  return retval;
 }
 
 
@@ -293,7 +337,7 @@ const TEntry * TCvsInterfacePserver::MakeFile (const std::string & path,
 
 int TCvsInterfacePserver::GetFile (const std::string & path,
 				   const std::string & version,
-				   unsigned long start, int count,
+				   long long start, int count,
 				   char * buffer)
 {
   if (!LoadTree ())
@@ -342,6 +386,70 @@ int TCvsInterfacePserver::GetFile (const std::string & path,
   }
 
   return -1;	// file not known
+}
+
+
+
+int TCvsInterfacePserver::PutFile (const std::string & path,
+				   const std::string & version,
+				   long long start, int count,
+				   char * buffer)
+{
+  if (!LoadTree ())
+    return 0;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  TEntry *entry = FindEntry (&fRootDir, fullpath);
+
+  if (entry == 0)
+    return ENOENT;		// file not known
+
+  if (entry->GetSource () != TEntry::Local)
+    return EROFS;
+
+  if (entry->isA () != TEntry::FileEntry)
+    return EISDIR;
+
+  TCachedFile *file = fWorkCache.CachedFile (fullpath);
+  if (!file)
+    return ENOMEM;
+
+  std::ostream *f = file->OpenForWrite (ios::binary);
+  if (!f)		// can not open file ?
+  {
+    delete file;
+
+    return ENOENT;
+  }
+
+  if (start != 0)
+    f->seekp (start);
+
+  f->write (buffer, count);
+
+  delete f;
+  delete file;
+
+  // now the info in the file entry must be updated
+  TFileData newdata;
+
+  if (!fWorkCache.FileData (fullpath, newdata))
+    return ENOENT;
+
+  TFile *changedFile = static_cast<TFile *> (entry);
+
+  changedFile->SetData (newdata);
+
+  return 0;	// file not known
 }
 
 
@@ -857,7 +965,7 @@ int TCvsInterfacePserver::ConvertAttr (const std::string & data) const
 int TCvsInterfacePserver::LoadFile (const std::string & path,
 				    const std::string & version,
 				    TVersionedFile & file,
-				    unsigned long start, int count,
+				    long long start, int count,
 				    char * buffer)
 {
   TSyslog *log = TSyslog::instance ();
@@ -912,7 +1020,7 @@ int TCvsInterfacePserver::LoadFile (const std::string & path,
 
         if (beginOfData)
         {
-          std::ostream *dest = cachedFile->OpenForWrite ();
+          std::ostream *dest = cachedFile->OpenForWrite (std::ios::trunc | std::ios::binary);
           const int bufsize = 4096;
           char readbuf[4096];
           unsigned long pos;

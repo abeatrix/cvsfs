@@ -60,6 +60,16 @@ bool TCache::MakeDir (const std::string & path, int mode)
 {
   std::string dir = fRoot + path;
   std::string::size_type pos;
+  int dirmode = S_IFDIR | mode;
+
+  if ((mode & S_IRUSR) != 0)
+    dirmode |= S_IXUSR;
+
+  if ((mode & S_IRGRP) != 0)
+    dirmode |= S_IXGRP;
+
+  if ((mode & S_IROTH) != 0)
+    dirmode |= S_IXOTH;
 
   pos = dir.rfind ('/');
   if (pos == std::string::npos)
@@ -84,7 +94,7 @@ bool TCache::MakeDir (const std::string & path, int mode)
 
     if (lstat (dirpart.c_str (), &info) != 0)
     {
-      int result = mkdir (dirpart.c_str (), S_IFDIR | mode);
+      int result = mkdir (dirpart.c_str (), dirmode);
       if (result != 0)
         return false;
     }
@@ -120,6 +130,16 @@ bool TCache::TouchFile (const std::string & path, int mode)
 {
   std::string dir = fRoot + path;
   std::string::size_type pos;
+  int dirmode = S_IFDIR | mode;
+
+  if ((mode & S_IRUSR) != 0)
+    dirmode |= S_IXUSR;
+
+  if ((mode & S_IRGRP) != 0)
+    dirmode |= S_IXGRP;
+
+  if ((mode & S_IROTH) != 0)
+    dirmode |= S_IXOTH;
 
   pos = dir.rfind ('/');
   if (pos == std::string::npos)
@@ -128,7 +148,7 @@ bool TCache::TouchFile (const std::string & path, int mode)
   // now create the directory
   std::string dirpart = dir;
 
-  pos = dir.find ('/');
+  pos = dir.find ('/', 1);
   while (pos != std::string::npos)
   {
     if (pos == dir.length ())		// trailing slash - skip it
@@ -140,7 +160,7 @@ bool TCache::TouchFile (const std::string & path, int mode)
 
     if (lstat (dirpart.c_str (), &info) != 0)
     {
-      int result = mkdir (dirpart.c_str (), S_IFDIR | mode);
+      int result = mkdir (dirpart.c_str (), dirmode);
       if (result != 0)
         return false;
     }
@@ -159,4 +179,21 @@ bool TCache::TouchFile (const std::string & path, int mode)
   close (fd);
 
   return true;
+}
+
+
+
+int TCache::DeleteFile (const std::string & path)
+{
+  std::string dir = fRoot + path;
+  std::string::size_type pos;
+
+  pos = dir.rfind ('/');
+  if (pos == std::string::npos)
+    return EIO;		// root '/' - nonsense
+
+  if (unlink (dir.c_str ()) != 0)
+    return errno;
+
+  return 0;
 }

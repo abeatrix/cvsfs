@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TModuleActionMkfile.cpp  -  description
+                          TModuleActionRmfile.cpp  -  description
                              -------------------
-    begin                : Tue Aug 20 2002
+    begin                : Wed Aug 21 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -21,7 +21,7 @@
 
 #include <strstream>
 
-#include "TModuleActionMkfile.h"
+#include "TModuleActionRmfile.h"
 
 #include <asm/errno.h>
 #include "TModuleServer.h"
@@ -30,28 +30,28 @@
 
 
 
-TModuleActionMkfile::TModuleActionMkfile ()
+TModuleActionRmfile::TModuleActionRmfile ()
 : TModuleAction ()
 {
 }
 
 
 
-TModuleActionMkfile::~TModuleActionMkfile ()
+TModuleActionRmfile::~TModuleActionRmfile ()
 {
 }
 
 
 
-/* expecting : "mkfile <filepath> <mode>"  */
-/* Note: the item "mkfile" is already read */
-bool TModuleActionMkfile::doit (TCvsInterface & interface)
+/* expecting : "rmdir <filepath>"         */
+/* Note: the item "rmdir" is already read */
+bool TModuleActionRmfile::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
   char buf[512];
   int size;
 
-  log->debug << "in mkfile::doit" << std::endl;
+  log->debug << "in rmfile::doit" << std::endl;
 
   if ((size = readLine (buf, sizeof (buf))) == -1)
     return true;
@@ -67,34 +67,23 @@ bool TModuleActionMkfile::doit (TCvsInterface & interface)
     while ((path.length () > 0) && (*(path.rbegin ()) == ' '))
       path.erase (path.length () - 1, 1);
 
-    std::string::size_type pos = path.find (' ');
+    std::string::size_type pos = path.find ("@@");
     if (pos != std::string::npos)
     {
-      std::string modestr = path;
-      int mode;
-
-      modestr.erase (0, pos + 1);
+      version = path;
+      version.erase (0, pos + 2);
       path.erase (pos);
-      mode = atoi (modestr.c_str ());
+    }
 
-      pos = path.find ("@@");
-      if (pos != std::string::npos)
-      {
-        version = path;
-        version.erase (0, pos + 2);
-        path.erase (pos);
-      }
+    log->debug << "remove file '" << path << "'" << std::endl;
 
-      log->debug << "make file '" << path << "' with mode " << mode << std::endl;
+    const TEntry * entry = interface.GetFullEntry (path, version);
 
-      const TEntry * entry = interface.GetFullEntry (path, version);
-
-      if (entry == 0)
-      {
-        entry = interface.MakeFile (path, version, mode);
-        if (entry != 0)
-          entry->operator << (buffer);
-      }
+    if (entry == 0)
+      buffer << ENOENT;
+    else
+    {
+      buffer << interface.RemoveFile (path, version);
     }
 
     if (buffer.pcount () != 0)

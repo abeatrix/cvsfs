@@ -42,15 +42,15 @@ class TModuleServer
     void run (TCvsInterface &);
 
     void write (const char *, int);
-    int read (char *, int);
+    int read (char *, int, int = 0);
     int readLine (char *, int);
+    int readItem (char *, int);
 
     const TMountParameters & parameters () const { return *fMountParameters; }
 
   private:
     void init ();
-    int readItem (char *, int);
-     
+
     typedef std::map<std::string, TModuleAction *> MapType;
     typedef MapType::value_type ValuePair;
 

@@ -61,6 +61,20 @@ int TModuleAction::readLine (char *buf, int max)
 
 
 
+int TModuleAction::readItem (char *buf, int max)
+{
+  return fServer->readItem (buf, max);
+}
+
+
+
+int TModuleAction::readData (char *buf, int max)
+{
+  return fServer->read (buf, max, max);
+}
+
+
+
 void TModuleAction::writeDummy ()
 {
   fServer->write ("0", 1);

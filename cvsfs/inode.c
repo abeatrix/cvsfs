@@ -24,16 +24,12 @@
 #include <linux/slab.h>
 #include <linux/smp_lock.h>
 
-//#include "socket.h"
 #include "dir.h"
 #include "file.h"
-//#include "cache.h"
-//#include "proc.h"
-//#include "procfs.h"
-//#include "devfs.h"
 
 #define CVSFS_ROOT_INODE	1
 
+//#define __DEBUG__
 
 
 /* local forward references */
@@ -57,14 +53,18 @@ cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
   switch (inode->i_mode & S_IFMT)
   {
     case S_IFREG:			/* regular file */
+#ifdef __DEBUG__
       printk (KERN_DEBUG "cvsfs: regular file\n");
+#endif
       inode->i_op = &cvsfs_file_inode_operations;
       inode->i_fop = &cvsfs_file_operations;
       inode->i_data.a_ops = &cvsfs_file_aops;
       break;
 
     case S_IFDIR:			/* directory */
+#ifdef __DEBUG__
       printk (KERN_DEBUG "cvsfs: directory\n");
+#endif
       inode->i_op = &cvsfs_dir_inode_operations;
       inode->i_fop = &cvsfs_dir_operations;
       break;

@@ -38,10 +38,12 @@ struct cvsfs_proc_info
 /* functions required by file system */
 char * cvsfs_get_file (struct cvsfs_sb_info *, char *, int);
 int cvsfs_get_attr (struct cvsfs_sb_info *, char *, struct cvsfs_fattr *);
-int cvsfs_read (struct cvsfs_sb_info *, char *, char *, unsigned long, unsigned long, char *);
+int cvsfs_read (struct cvsfs_sb_info *, char *, char *, loff_t, size_t, char *);
+int cvsfs_write (struct cvsfs_sb_info *, char *, char *, loff_t, size_t, char *);
 int cvsfs_create_dir (struct cvsfs_sb_info *, char *, int, struct cvsfs_fattr *);
 int cvsfs_remove_dir (struct cvsfs_sb_info *, char *);
 int cvsfs_create_file (struct cvsfs_sb_info *, char *, int, struct cvsfs_fattr *);
+int cvsfs_remove_file (struct cvsfs_sb_info *, char *);
 
 /* functions required by procfs interface */
 int cvsfs_get_view (struct cvsfs_sb_info *, char **);

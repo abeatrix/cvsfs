@@ -243,6 +243,8 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
 /*  sb->s_flags |= MS_RDONLY; */
   sb->s_op = &cvsfs_sops;
 
+  info->blocksize = sb->s_blocksize;
+  info->blocksize_bits = sb->s_blocksize_bits;
   info->mount.file_mode = S_IRWXU | S_IRGRP | S_IROTH | S_IFREG;
   info->mount.dir_mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH | S_IFDIR;
   info->mount.uid = current->uid;

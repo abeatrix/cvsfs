@@ -39,6 +39,8 @@ class TModuleAction
 
   protected:
     int readLine (char *, int);
+    int readItem (char *, int);
+    int readData (char *, int);
     void writeDummy ();
     void writeData (const char *, int);
     void writeData (const std::string &);

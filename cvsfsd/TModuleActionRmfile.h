@@ -1,8 +1,8 @@
 /***************************************************************************
-                          util.h  -  description
+                          TModuleActionRmfile.h  -  description
                              -------------------
-    begin                : Thu Nov 15 2001
-    copyright            : (C) 2001 by Petric Frank
+    begin                : Wed Aug 21 2002
+    copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
 
@@ -15,24 +15,21 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef __UTIL_H__
-#define __UTIL_H__
+#ifndef __TMODULEACTIONRMFILE_H__
+#define __TMODULEACTIONRMFILE_H__
+
+#include "TModuleAction.h"
 
 
 
-/* forward reference */
-struct dentry;
+class TModuleActionRmfile : public TModuleAction
+{
+  public:
+    TModuleActionRmfile ();
+    virtual ~TModuleActionRmfile ();
 
-
-
-char * strdup (const char *);
-char * cvsfs_skip_whitespace (char *);
-char * cvsfs_rtrim (char *);
-int cvsfs_get_name (struct dentry *, char *, int);
-
-/* may be purged if the kernel exports the appropriate functions */
-unsigned long long own_simple_strtoull (const char *, char **, unsigned int);
-long long own_simple_strtoll (const char *, char **, unsigned int);
+    virtual bool doit (TCvsInterface &);
+};
 
 
 

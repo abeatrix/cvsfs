@@ -70,6 +70,8 @@ struct cvsfs_sb_info
   int				id;
   char				idstring[16];
   struct semaphore		sem;
+  unsigned long			blocksize;
+  unsigned char			blocksize_bits;
   char				*parm_string;
 };
 

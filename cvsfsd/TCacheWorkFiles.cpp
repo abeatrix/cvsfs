@@ -102,6 +102,13 @@ bool TCacheWorkFiles::MakeFile (const std::string & path, int mode)
 
 
 
+int TCacheWorkFiles::RemoveFile (const std::string & path)
+{
+  return DeleteFile (fMountpoint + "/" + path);
+}
+
+
+
 // load one directory - called recursive if necessary
 bool TCacheWorkFiles::LoadDir (TDirectory & root, const std::string & path)
 {

@@ -155,8 +155,10 @@ cvsfs_serialize_request (struct cvsfs_sb_info * info, char * buf, int size, char
 /* the expected return is from the daemon is:                         */
 /*   <mode> <size> <atime> <mtime> <ctime> <version> '\0'             */
 /* all values (except version) are be represented as decimal numbers  */
+/* it is expected that the parameter 'cmd' points to dynamically      */
+/* allocated space (using kmalloc). the pointer is freed here !       */
 static int
-cvsfs_send_response_attr (char * cmd, struct cvsfs_sb_info * info, struct cvsfs_fattr * attr)
+cvsfs_send_response_attr (char * cmd, int cmdsize, struct cvsfs_sb_info * info, struct cvsfs_fattr * attr)
 {
   char * response;
   char * ptr;
@@ -165,10 +167,10 @@ cvsfs_send_response_attr (char * cmd, struct cvsfs_sb_info * info, struct cvsfs_
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: send_resonse_attr - send request -->%s\n", cmd);
 #endif    
-  ret = cvsfs_serialize_request (info, cmd, strlen (cmd) + 1, &response);
+  ret = cvsfs_serialize_request (info, cmd, cmdsize, &response);
   kfree (cmd);
   if (ret <= 0)		/* error, daemon not running or empty response */
-    return -1;
+    return -EIO;
 
   /* for security - not to access unallocated memory areas */
 //  response[ret - 1] = '\0';
@@ -179,13 +181,13 @@ cvsfs_send_response_attr (char * cmd, struct cvsfs_sb_info * info, struct cvsfs_
 
   /* set fixed value fields */
   attr->f_nlink = 1;
-  attr->f_blksize = 1024;
+  attr->f_blksize = info->blocksize;
 
   /* now analyze the string */
   attr->f_mode = simple_strtoul (response, &ptr, 0);
   if (*ptr != '\0')
     ++ptr;
-  attr->f_size = simple_strtoul (ptr, &ptr, 0);
+  attr->f_size = own_simple_strtoll (ptr, &ptr, 0);
   if (*ptr != '\0')
     ++ptr;
   attr->f_atime = simple_strtoul (ptr, &ptr, 0);
@@ -210,7 +212,7 @@ cvsfs_send_response_attr (char * cmd, struct cvsfs_sb_info * info, struct cvsfs_
       attr->f_mode &= (info->mount.file_mode | ~S_IRWXUGO);
 
   /* calculate the number of blocks */
-  attr->f_blocks = (attr->f_size + attr->f_blksize - 1) / attr->f_blksize;
+  attr->f_blocks = (attr->f_size + attr->f_blksize - 1) >> info->blocksize_bits;
 
   kfree (response);
 
@@ -274,7 +276,6 @@ cvsfs_get_attr (struct cvsfs_sb_info * info, char * name, struct cvsfs_fattr * a
 {
   char * cmd;
   int size;
-  int ret;
 
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: get_attr for file %s\n", name);
@@ -282,15 +283,11 @@ cvsfs_get_attr (struct cvsfs_sb_info * info, char * name, struct cvsfs_fattr * a
   size = 6 + strlen (name);
   cmd = kmalloc (size, GFP_KERNEL);
   if (!cmd)
-    return -1;
+    return -ENOMEM;
 
   sprintf (cmd, "attr %s", name);
   
-  ret = cvsfs_send_response_attr (cmd, info, attr);
-
-  kfree (cmd);
-  
-  return ret;
+  return cvsfs_send_response_attr (cmd, size, info, attr);
 }
 
 
@@ -301,11 +298,11 @@ cvsfs_get_attr (struct cvsfs_sb_info * info, char * name, struct cvsfs_fattr * a
 /* as result the data is returned.                        */
 int
 cvsfs_read (struct cvsfs_sb_info * info, char * name, char * version,
-	    unsigned long offset, unsigned long count, char * buffer)
+	    loff_t offset, size_t count, char * buffer)
 {
   char * cmd;
   char * response;
-  char number1[32];
+  char number1[32];	// hopefully enough to keep 64 bit number - to be checked !
   char number2[32];
   int size;
   int ret;
@@ -313,8 +310,8 @@ cvsfs_read (struct cvsfs_sb_info * info, char * name, char * version,
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: read - file=%s, offset=%i, count=%i\n", name, (int) offset, (int) count);
 #endif
-  sprintf (number1, "%lu", offset);
-  sprintf (number2, "%lu", count);
+  sprintf (number1, "%lli", offset);
+  sprintf (number2, "%d", count);
 
   size = 7 + strlen (number1) + strlen (number2) + strlen (name);
   if (version)
@@ -347,6 +344,75 @@ cvsfs_read (struct cvsfs_sb_info * info, char * name, char * version,
 
 
 
+/* this function writes a file data block                         */
+/* the request sent to the daemon looks like this:                */
+/*   put <offset> <size> <file name> <data>                       */
+/* the expected return is from the daemon is:                     */
+/*   <completion code> '\0'                                       */
+/* the completion codes are:                                      */
+/*   0 for successful completed                                   */
+/*   one of the values defined in asm/errno.h in case of an error */
+int
+cvsfs_write (struct cvsfs_sb_info * info, char * name, char * version,
+	    loff_t offset, size_t count, char * buffer)
+{
+  char * cmd;
+  char * response;
+  char * ptr;
+  char number1[32];	// hopefully enough to keep 64 bit number - to be checked !
+  char number2[32];
+  int size;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: write - file=%s, offset=%i, count=%i\n", name, (int) offset, (int) count);
+#endif
+  sprintf (number1, "%lli", offset);
+  sprintf (number2, "%d", count);
+
+  size = 8 + strlen (number1) + strlen (number2) + strlen (name) + count;
+  cmd = strchr (name, '@');
+  if ((cmd != NULL) && (cmd[1] == '@'))
+    version = NULL;
+  else
+    if ((version != NULL) && (strlen (version) > 0))
+      size += strlen (version) + 2;
+      
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -1;
+
+  if ((version != NULL) && (strlen (version) > 0))
+    sprintf (cmd, "put %s %s %s@@%s ", number1, number2, name, version);
+  else
+    sprintf (cmd, "put %s %s %s ", number1, number2, name);
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: write - send request -->%s\n", cmd);
+#endif
+
+  memcpy (&cmd[size - count - 1], buffer, count);
+  cmd[size - 1] = '\0';
+
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: put - returned from daemon -->%s\n", response);
+#endif    
+
+  /* now analyze the string */
+  ret = simple_strtoul (response, &ptr, 0);
+
+  kfree (response);
+
+  return -ret;
+}
+
+
+
 /* this function asks the daemon create a new directory               */
 /* the request sent to the daemon has this layout:                    */
 /*   mkdir <full path of file> <requested access mode>                */
@@ -358,27 +424,22 @@ cvsfs_create_dir (struct cvsfs_sb_info * info, char * name, int mode, struct cvs
 {
   char * cmd;
   int size;
-  int ret;
   char number[32];
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: create_dir for file %s\n", name);
-//#endif
+#endif
 
   sprintf (number, "%d", mode);
 
   size = 8 + strlen (name) + strlen (number);
   cmd = kmalloc (size, GFP_KERNEL);
   if (!cmd)
-    return -1;
+    return -ENOMEM;
 
   sprintf (cmd, "mkdir %s %s", name, number);
 
-  ret = cvsfs_send_response_attr (cmd, info, attr);
-
-  kfree (cmd);
-  
-  return ret;
+  return cvsfs_send_response_attr (cmd, size, info, attr);
 }
 
 
@@ -400,9 +461,9 @@ cvsfs_remove_dir (struct cvsfs_sb_info * info, char * name)
   int size;
   int ret;
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
-//#endif
+#endif
 
   size = 7 + strlen (name);
   cmd = kmalloc (size, GFP_KERNEL);
@@ -410,17 +471,17 @@ cvsfs_remove_dir (struct cvsfs_sb_info * info, char * name)
     return -ENOMEM;
 
   sprintf (cmd, "rmdir %s", name);
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: remove_dir - send request -->%s\n", cmd);
-//#endif    
+#endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
   if (ret <= 0)		/* error, daemon not running or empty response */
     return -EIO;
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: remove_dir - returned from daemon -->%s\n", response);
-//#endif    
+#endif    
 
   /* now analyze the string */
   ret = simple_strtoul (response, &ptr, 0);
@@ -443,27 +504,22 @@ cvsfs_create_file (struct cvsfs_sb_info * info, char * name, int mode, struct cv
 {
   char * cmd;
   int size;
-  int ret;
   char number[32];
 
-//#ifdef __DEBUG__
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: create_file for file %s\n", name);
-//#endif
+#endif
 
   sprintf (number, "%d", mode);
 
   size = 9 + strlen (name) + strlen (number);
   cmd = kmalloc (size, GFP_KERNEL);
   if (!cmd)
-    return -1;
+    return -ENOMEM;
 
   sprintf (cmd, "mkfile %s %s", name, number);
 
-  ret = cvsfs_send_response_attr (cmd, info, attr);
-
-  kfree (cmd);
-  
-  return ret;
+  return cvsfs_send_response_attr (cmd, size, info, attr);
 }
 
 
@@ -512,4 +568,53 @@ cvsfs_control_command (struct cvsfs_sb_info * info, char * command, char * param
   printk (KERN_DEBUG "cvsfs: cvsfs_control_command - not implemented\n");
 
   return 0;
+}
+
+
+
+/* this function asks the daemon remove a file                        */
+/* the request sent to the daemon has this layout:                    */
+/*   rmdir <full path of file>                                        */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> '\0'                                           */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_remove_file (struct cvsfs_sb_info * info, char * name)
+{
+  char * cmd;
+  char * response;
+  char * ptr;
+  int size;
+  int ret;
+
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
+//#endif
+
+  size = 8 + strlen (name);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  sprintf (cmd, "rmfile %s", name);
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir - send request -->%s\n", cmd);
+//#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir - returned from daemon -->%s\n", response);
+//#endif    
+
+  /* now analyze the string */
+  ret = simple_strtoul (response, &ptr, 0);
+
+  kfree (response);
+
+  return -ret;
 }

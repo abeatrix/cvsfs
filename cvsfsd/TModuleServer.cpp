@@ -156,30 +156,35 @@ void TModuleServer::write (const char *buf, int count)
 
 
 
-int TModuleServer::read (char *buf, int max)
+int TModuleServer::read (char *buf, int bufsize, int count)
 {
   if (ready ())
   {
     char *ptr;
-    int count;
+    int bytesread;
     int item;
 
-    --max;
+    --bufsize;
+
+    if (count == 0)
+      count = bufsize;
+
     ptr = buf;
-    count = 0;
+    bytesread = 0;
     item = fgetc (fInDeviceFile);
-    while ((item != EOF) && (count < max))
+    while ((item != EOF) && (count > bytesread))
     {
       *ptr = item;
-      ++count;
+      ++bytesread;
       ++ptr;
       
       item =  fgetc (fInDeviceFile);
     }
     
-    *ptr = '\0';
+    if (bufsize >= count)	// if there is space append a string delimiter
+      *ptr = '\0';
     
-    return count;
+    return bytesread;
   }
   
   return -1;

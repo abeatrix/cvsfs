@@ -24,12 +24,7 @@
 #include <linux/string.h>
 #include <linux/dcache.h>
 #include <linux/slab.h>
-
-//#include <net/ip.h>
-
-//#include "inode.h"
-//#include "cache.h"
-//#include "socket.h"
+#include <linux/ctype.h>
 
 
 
@@ -110,4 +105,58 @@ cvsfs_get_name (struct dentry * d, char * name, int maxsize)
   }
   
   return 0;
+}
+
+
+
+/************************************************************************/
+/* The following functions are redefined here because they were not     */
+/* exported from the kernel (here: 2.4.10). The original place of these */
+/* these are /usr/src/linux/lib/vsprintf.c                              */
+/* If at sometime they appear in the file /usr/src/linux/kernel/ksyms.c */
+/* the code here can be removed.                                        */
+/************************************************************************/
+
+/**
+ * simple_strtoull - convert a string to an unsigned long long
+ * @cp: The start of the string
+ * @endp: A pointer to the end of the parsed string will be placed here
+ * @base: The number base to use
+ */
+unsigned long long own_simple_strtoull(const char *cp,char **endp,unsigned int base)
+{
+	unsigned long long result = 0,value;
+
+	if (!base) {
+		base = 10;
+		if (*cp == '0') {
+			base = 8;
+			cp++;
+			if ((*cp == 'x') && isxdigit(cp[1])) {
+				cp++;
+				base = 16;
+			}
+		}
+	}
+	while (isxdigit(*cp) && (value = isdigit(*cp) ? *cp-'0' : (islower(*cp)
+	    ? toupper(*cp) : *cp)-'A'+10) < base) {
+		result = result*base + value;
+		cp++;
+	}
+	if (endp)
+		*endp = (char *)cp;
+	return result;
+}
+
+/**
+ * simple_strtoll - convert a string to a signed long long
+ * @cp: The start of the string
+ * @endp: A pointer to the end of the parsed string will be placed here
+ * @base: The number base to use
+ */
+long long own_simple_strtoll(const char *cp,char **endp,unsigned int base)
+{
+	if(*cp=='-')
+		return -own_simple_strtoull(cp+1,endp,base);
+	return own_simple_strtoull(cp,endp,base);
 }

@@ -52,6 +52,18 @@ std::ostream * TCachedFile::OpenForWrite () const
 
 
 
+std::ostream * TCachedFile::OpenForWrite (int mode) const
+{
+  if (!HaveFile ())
+    if (!DirExist ())
+      if (!CreateDir ())
+        return 0;
+
+  return new std::ofstream ((fDir + "/" + fName).c_str (), mode | ios::out);
+}
+
+
+
 std::istream * TCachedFile::OpenForRead () const
 {
   if (!HaveFile ())
@@ -62,7 +74,7 @@ std::istream * TCachedFile::OpenForRead () const
 
 
 
-int TCachedFile::ReadFile (char * buffer, unsigned long start, int count) const
+int TCachedFile::ReadFile (char * buffer, long long start, int count) const
 {
   std::string fullpath = fDir + "/" + fName;
   struct stat info;

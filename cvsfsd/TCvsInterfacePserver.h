@@ -39,10 +39,12 @@ class TCvsInterfacePserver : public TCvsInterface
     bool Test ();
     virtual const TEntry * GetEntry (const std::string &, int);
     virtual const TEntry * GetFullEntry (const std::string &, const std::string &);
-    virtual int GetFile (const std::string &, const std::string &, unsigned long, int, char *);
+    virtual int GetFile (const std::string &, const std::string &, long long, int, char *);
+    virtual int PutFile (const std::string &, const std::string &, long long, int, char *);
     virtual const TEntry * MakeDirectory (const std::string &, const std::string &, int);
     virtual int RemoveDirectory (const std::string &, const std::string &);
     virtual const TEntry * MakeFile (const std::string &, const std::string &, int);
+    virtual int RemoveFile (const std::string &, const std::string &);
 
   private:
     typedef enum
@@ -78,7 +80,7 @@ class TCvsInterfacePserver : public TCvsInterface
     int ConvertTime (const std::string &) const;
     int ConvertAttr (const std::string &) const;
 
-    int LoadFile (const std::string &, const std::string &, TVersionedFile &, unsigned long, int, char *);
+    int LoadFile (const std::string &, const std::string &, TVersionedFile &, long long, int, char *);
     TDirectory *GetParentDirectory (const std::string &, std::string &);
 };
 

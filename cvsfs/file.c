@@ -23,19 +23,25 @@
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <linux/pagemap.h>
+#include <linux/slab.h>
+#include <asm/uaccess.h>
 
 #include "proc.h"
 #include "util.h"
 
+//#define __DEBUG__
+
 
 
 /* forward references - file operations */
+static ssize_t cvsfs_file_write (struct file *, const char *, size_t, loff_t *);
 static int cvsfs_file_open (struct inode *, struct file *);
 static int cvsfs_file_release (struct inode *, struct file *);
 // static int cvsfs_file_ioctl (struct inode *, struct file *, unsigned int, unsigned long);
 
 struct file_operations cvsfs_file_operations = {
 						 read:		generic_file_read,
+						 write:		cvsfs_file_write,
 //						 ioctl:		cvsfs_file_ioctl,
 						 mmap:		generic_file_mmap,
 						 open:		cvsfs_file_open,
@@ -63,6 +69,8 @@ struct address_space_operations cvsfs_file_aops = {
 static int
 cvsfs_file_open (struct inode * inode, struct file * file)
 {
+  file->private_data = inode->i_sb->u.generic_sbp;
+  
   return 0;
 }
 
@@ -72,6 +80,73 @@ static int
 cvsfs_file_release (struct inode * inode, struct file * file)
 {
   return 0;
+}
+
+
+
+static ssize_t
+cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t * offset)
+{
+  struct dentry *dentry = file->f_dentry;
+  struct inode *inode = dentry->d_inode;
+  struct super_block *sb = inode->i_sb;
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+//  struct cvsfs_fattr fattr;
+  char namebuf[512];
+  char *version;
+  char *block;
+  loff_t start;
+  size_t size;
+  int ret = 0;
+  
+  if (cvsfs_get_name (dentry, namebuf, sizeof (namebuf)) < 0)
+    return -ENOMEM;
+
+  version = inode->u.generic_ip;
+  if ((version != NULL) && (strlen (version) > 0))
+  {						/* append version - if any */
+    if (sizeof (namebuf) > (strlen (namebuf) + strlen (version) + 3))
+      return -ENOMEM;
+      
+    strcat (namebuf, "@@");
+    strcat (namebuf, version);
+  }
+
+#ifdef __DEBUG__    
+  printk (KERN_DEBUG "cvsfs: file_write %s at offset %lli (%d Bytes)\n", namebuf, *offset, count);
+#endif
+  
+  block = kmalloc (GFP_KERNEL, 4096);
+  if (!block)
+    return -ENOMEM;
+
+  start = 0;
+  while (start < count)
+  {
+    size = count - start;
+    if (size > 4096)
+      size = 4096;   
+    
+    ret = -ENOMEM;
+    if (copy_from_user (block, buffer + start, size) != 0)
+      break;
+  
+    ret = cvsfs_write (info, namebuf, version, *offset, size, block);
+    if (ret < 0)
+      break;
+    
+    *offset += size;
+    start += size;
+  }
+
+  kfree (block);
+  
+  if (ret < 0)
+    return ret;
+
+  dentry->d_time = 1;	// system should evaluate the actual file attributes
+
+  return count;
 }
 
 
@@ -108,8 +183,8 @@ cvsfs_file_readpage (struct file * file, struct page * page)
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
   char *buffer;
   char *version;
-  unsigned long offset;
-  unsigned long count;
+  loff_t offset;
+  size_t count;
   int result;
   char name[512];
 
@@ -164,7 +239,7 @@ void
 cvsfs_init_root_dirent (struct cvsfs_sb_info * server, struct cvsfs_fattr * fattr)
 {
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: cvsfs_init_root_dirent\n");
+  printk (KERN_DEBUG "cvsfs: init_root_dirent\n");
 #endif
   memset (fattr, 0, sizeof (struct cvsfs_fattr));
     

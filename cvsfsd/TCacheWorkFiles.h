@@ -37,6 +37,7 @@ class TCacheWorkFiles : public TCache
     bool MakeDirectory (const std::string &, int);
     int RemoveDirectory (const std::string &);
     bool MakeFile (const std::string &, int);
+    int RemoveFile (const std::string &);
     bool FileData (const std::string &, TFileData &);
 
   private:

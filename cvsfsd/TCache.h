@@ -33,6 +33,7 @@ class TCache
     bool MakeDir (const std::string &, int);
     int RemoveDir (const std::string &);
     bool TouchFile (const std::string &, int);
+    int DeleteFile (const std::string &);
 
     std::string	fRoot;
     bool	fCleanOnExit;
