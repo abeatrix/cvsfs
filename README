@@ -39,8 +39,8 @@ Requirements:
 - Kernel 2.4.10 and later.
   * Tested distributions:
     - SuSE 7.3
-    - Debian 3.x
-    - RedHat 7.3 (with updated Kernel 2.4.10)
+    - Debian 3.0
+    - RedHat 7.2 (with updated Kernel 2.4.10)
 - Running network.
 - Bash 2.0 and later (for installation)
 
@@ -117,28 +117,31 @@ Usage (for root users):
 
 Options (comma separated list):
   user=<username>     The username to be used for authentication at the
-                      cvs-pserver. If not given the user 'anaonymous' is
-		      applied.
-  password=<secret>   The password for the username given above. If omitted
-                      the a empty password is applied.
-  cvsroot=<root>      The cvs root directory. If omitted then /cvsroot is
-                      used as default.
+                      cvs-pserver.
+		      Default is 'anaonymous'.
+  password=<secret>   The password for the username given above.
+                      Default is an empty password.
+  cvsroot=<root>      The cvs root directory.
+                      Default is '/cvsroot'.
   uid=<userid>        The remote files will be presented unter this user id
                       to the customer. The userid may be given as user number
-		      or user name. If not given the current user id will
-		      be used. (This option is available for root only !)
+		      or user name.
+		      Default is the current user id.
+		      (This option is available for root users only !)
   gid=<groupid>       The remote files will be presented unter this group id
                       to the customer. The userid may be given as group number
-		      or group name. If not given the current group id will
-		      be used. (This option is available for root only !)
+		      or group name.
+		      Default is the current group id.
+		      (This option is available for root users only !)
   fmask=<attribs>     The files mounted will get this file attributes.
-                      If not given the current umask will be used.
 		      (for example: umask = 022 is equivalent to fmask=755)
 		      Remark: The kernel driver will unmark the 'writeable'
 		              attribute as long the file is not checked
 			      out for update.
+                      Default is the current umask.
   dmask=<attribs>     The directories mounted will get this file attributes.
-                      If not given the current umask will be used.
+		      (for example: umask = 022 is equivalent to fmask=755)
+                      Default is the current umask.
 
 To unmount the file system simply use umount.
 Anyway you may use the cvsmount/cvsumount described below. The options 'uid'
@@ -170,17 +173,17 @@ Example:
 
 If you specify for the actual cvs tool the environment variable
 
-  CVSROOT=:pserver:humbia@sorceforge.net:/cvsroot/project
+  CVSROOT=:pserver:humbia@sourceforge.net:/cvsroot/project
   
 the password is 'secret', the project is named 'myproject' and the moutpoint
 will be /humbia then the following command is required:
 
   mount -t cvsfs -o user=humbia,password=secret,cvsroot=/cvsroot/project \
-        //sorceforge.net/myproject /humbia
+        //sourceforge.net/myproject /humbia
 
 or using the cvsmount command:
 
-  cvsmount //sorceforge.net/myproject /humbia \
+  cvsmount //sourceforge.net/myproject /humbia \
            -o user=humbia,password=secret,cvsroot=/cvsroot/project
 
 
@@ -192,6 +195,13 @@ or
 
   cvsumount /humbia
 
+
+A working example is this project at SourceForge. The Statement is:
+
+  cvsmount //cvs.cvsfs.sourceforge.net/cvsfs <mountpoint> \
+           -o cvsroot=/cvsroot/cvsfs
+
+This will mount the cvsfs CVS repository at <mountpoint>.
 
 
 Working with a cvsfs mounted file system:

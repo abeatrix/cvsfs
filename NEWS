@@ -1,3 +1,14 @@
+Version 1.1.2:
+First version with write capabilities. You are now allowed to create
+and delete files and directories. This is limited to files and
+directories which are not in the CVS repository.
+But anyway, if for example a build process which do not overwrite
+existing file (i.e. creates only new files) it should work.
+
+Version 1.1.1:
+Bugfix release. The daemon enters an endless loop if the CVS file
+system mounted is deeper than 1 level.
+
 Version 1.1.0:
 Rewrite kernel module to communicate via device to cvs server. This
 requires the a server process to be started. This server process is

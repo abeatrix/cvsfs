@@ -7,6 +7,8 @@ Short term:
   - modify debug level
   - cache cleanup
   - ...
+* Redesign cvsfsd caching subsystem
+* IOCTL interface for checkin/checkout
 
 
 Long term:
@@ -15,4 +17,12 @@ Long term:
 * Enchance GNU make to support logging via this driver to evaluate the
   file dependencies.
 * Adapt for kernel 2.2.x ?
-* allow > 2GB files (i.e. 64 Bit filesystem)
+* allow > 2GB files (i.e. 64 Bit file system)
+* Support other remote filesystems like
+  - ftp
+  - ...
+* Support CD 'write system' which which overlays a CD contents with a
+  writeable layer. The enables to 'update' a CD without the necessity
+  to
+  - copy the CD contents to the local disk
+  - burn a new CD
