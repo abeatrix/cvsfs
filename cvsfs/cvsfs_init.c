@@ -22,7 +22,9 @@
 #include <linux/fs.h>
 
 #include "inode.h"
+#include "cache.h"
 #include "procfs.h"
+#include "devfs.h"
 
 MODULE_AUTHOR ("Petric Frank <pfrank@gmx.de>");
 MODULE_DESCRIPTION ("CVS file system");
@@ -40,6 +42,10 @@ __init init_cvsfs_fs ()
 
   cvsfs_procfs_init ();
 
+  cvsfs_devfs_init ();
+
+  cvsfs_cache_init ();
+
   return register_filesystem (&cvsfs_fs_type);
 }
 
@@ -51,7 +57,11 @@ __exit exit_cvsfs_fs ()
 {
   printk (KERN_DEBUG "cvsfs: exit_cvs_vfs\n");
 
+  cvsfs_cache_empty ();
+
   cvsfs_procfs_cleanup ();
+
+  cvsfs_devfs_cleanup ();
 
   unregister_filesystem (&cvsfs_fs_type);
 }
@@ -62,3 +72,5 @@ EXPORT_NO_SYMBOLS;
 
 module_init (init_cvsfs_fs);
 module_exit (exit_cvsfs_fs);
+
+MODULE_LICENSE("GPL");
