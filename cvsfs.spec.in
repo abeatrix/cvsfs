@@ -7,6 +7,7 @@ Copyright: GPL
 Group: System Environment/Kernel
 Packager: Volker Moell <volker@die-moells.de>
 
+URL: http://sourceforge.net/projects/cvsfs/
 Source: %{name}-%{version}.tar.gz
 
 BuildRoot: %{_tmppath}/%{name}-buildroot
