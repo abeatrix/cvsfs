@@ -6,5 +6,10 @@
 * ability to read files
 
 2001/11/08:
-* Bufix: Month not calculated properly
+* Bugfix: Month not calculated properly
 * Code cleanups
+
+2001/11/14:
+* Bugfix: Time calculation of files fixed
+* Removed debug messages to syslog
+* Add support of procfs

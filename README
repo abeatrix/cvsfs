@@ -68,6 +68,26 @@ will be /humbia then the following command is required:
         //sorceforge.net/myproject /humbia
 
 
+
+Procfs support:
+---------------
+
+Under /proc the module wlll, when loaded, create a subdirectory named 'cvsfs'.
+Each mount point where a cvsfs file system is mounted will appear under this
+subdirectory. The absolute path of the mount points will show up there. At
+the least directory level there are now 3 files:
+
+  control (write only) - will control the cvsfs (checkout, checkin, etc.)
+  status  (read only)  - gives an actual status of the mount point
+  view    (read/write) - displays and controls the view to the repository
+
+Using this entries the behaviour of the mounted cvsfs file system is
+controlled.
+
+Most parts of the procfs support is in early stage and may not function
+properly. There will be tools in future to ease the use of the procfs entries.
+
+
 Hint:
 -----
 
