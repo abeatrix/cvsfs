@@ -93,13 +93,13 @@ cvsfs_file_open (struct inode * inode, struct file * file)
   }
     
 #ifdef __DEBUG__    
-  printk (KERN_DEBUG "cvsfs: file_open %s with mode %d and flags %d\n", namebuf, file->f_mode, file->f_flags);
+  printk (KERN_DEBUG "cvsfs(%d): file_open %s with mode %d and flags %d\n", info->id, namebuf, file->f_mode, file->f_flags);
 #endif
 
   if ((file->f_flags & O_TRUNC) != 0)
   {
 #ifdef __DEBUG__    
-    printk (KERN_DEBUG "cvsfs: file_open truncate file\n");
+    printk (KERN_DEBUG "cvsfs(%d): file_open truncate file\n", info->id);
 #endif
     ret = cvsfs_truncate_file (info, namebuf);
 
@@ -148,7 +148,7 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   }
 
 #ifdef __DEBUG__    
-  printk (KERN_DEBUG "cvsfs: file_write %s at offset %lli (%d Bytes)\n", namebuf, *offset, count);
+  printk (KERN_DEBUG "cvsfs(%d): file_write %s at offset %lli (%d Bytes)\n", info->id, namebuf, *offset, count);
 #endif
   
   block = kmalloc (GFP_KERNEL, 4096);
@@ -203,8 +203,8 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
   limited_string *value = (limited_string *) arg;  
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: file_ioctl signature %d, function %d, direction %d, size %d\n",
-	  _IOC_TYPE (cmd), _IOC_NR (cmd), _IOC_DIR (cmd), _IOC_SIZE (cmd));
+  printk (KERN_DEBUG "cvsfs(%d): file_ioctl signature %d, function %d, direction %d, size %d\n",
+	  info->id, _IOC_TYPE (cmd), _IOC_NR (cmd), _IOC_DIR (cmd), _IOC_SIZE (cmd));
 #endif
 
   if (_IOC_TYPE (cmd) != CVSFS_IOC_MAGIC)
@@ -225,7 +225,7 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
   strcpy (fullnamebuf, namebuf);
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: file_ioctl request function for %s\n", fullnamebuf);
+  printk (KERN_DEBUG "cvsfs(%d): file_ioctl request function for %s\n", info->id, fullnamebuf);
 #endif
 
   version = inode->u.generic_ip;
@@ -251,7 +251,7 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
 
     case CVSFS_GET_VERSION:	/* obtain the revision number */
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: file_ioctl - GET_VERSION, value = %p\n", value);
+      printk (KERN_DEBUG "cvsfs(%d): file_ioctl - GET_VERSION, value = %p\n", info->id, value);
 #endif
       if ((value == NULL) || (value->string == NULL))
         return -EFAULT;			/* faulty parameter */
@@ -264,7 +264,7 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
 	size = value->maxsize;
       
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: file_ioctl - version = >%s<\n", retval);
+      printk (KERN_DEBUG "cvsfs(%d): file_ioctl - version = >%s<\n", info->id, retval);
 #endif
       
       err = copy_to_user (value->string, version, size);

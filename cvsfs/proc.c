@@ -61,7 +61,7 @@ cvsfs_serialize_request (struct cvsfs_sb_info * info, char * buf, int size, char
   int retval = 0;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: serialize_request - send command -->%s\n", buf);
+  printk (KERN_DEBUG "cvsfs(%d): serialize_request - send command -->%s\n", info->id, buf);
 #endif
   if (down_interruptible (&(info->proc.lock)))
     return -ERESTARTSYS;
@@ -82,7 +82,7 @@ cvsfs_serialize_request (struct cvsfs_sb_info * info, char * buf, int size, char
 
         size = simple_strtoul (*ret, &ptr, 0);
 #ifdef __DEBUG__
-        printk (KERN_DEBUG "cvsfs: serialize_request - size=%d, ptr=%s\n", size, ptr);
+        printk (KERN_DEBUG "cvsfs(%d): serialize_request - size=%d, ptr=%s\n", info->id, size, ptr);
 #endif
 	if (size > 0)
 	{
@@ -92,7 +92,7 @@ cvsfs_serialize_request (struct cvsfs_sb_info * info, char * buf, int size, char
           remain = size - retval;
 
 #ifdef __DEBUG__
-          printk (KERN_DEBUG "cvsfs: serialize_request - after strip length: size=%d, ptr=%s\n", retval, ptr);
+          printk (KERN_DEBUG "cvsfs(%d): serialize_request - after strip length: size=%d, ptr=%s\n", info->id, retval, ptr);
 #endif
           if (remain > 0)
           {
@@ -165,7 +165,7 @@ cvsfs_send_response_attr (char * cmd, int cmdsize, struct cvsfs_sb_info * info, 
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: send_resonse_attr - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): send_resonse_attr - send request -->%s\n", info->id, cmd);
 #endif    
   ret = cvsfs_serialize_request (info, cmd, cmdsize, &response);
   kfree (cmd);
@@ -176,7 +176,7 @@ cvsfs_send_response_attr (char * cmd, int cmdsize, struct cvsfs_sb_info * info, 
 //  response[ret - 1] = '\0';
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: send_resonse_attr - returned from daemon -->%s\n", response);
+  printk (KERN_DEBUG "cvsfs(%d): send_resonse_attr - returned from daemon -->%s\n", info->id, response);
 #endif    
 
   /* set fixed value fields */
@@ -236,7 +236,7 @@ cvsfs_get_file (struct cvsfs_sb_info * info, char * dir, int index)
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: get_file - index=%d, dir=%s\n", index, dir);
+  printk (KERN_DEBUG "cvsfs(%d): get_file - index=%d, dir=%s\n", info->id, index, dir);
 #endif
   sprintf (number, "%d", index);
   size = 5 + strlen (number) + strlen (dir);
@@ -251,13 +251,13 @@ cvsfs_get_file (struct cvsfs_sb_info * info, char * dir, int index)
   if (ret > 0)
   {
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: get_file - retrieved file name=%s\n", response);
+    printk (KERN_DEBUG "cvsfs(%d): get_file - retrieved file name=%s\n", info->id, response);
 #endif    
     return response;
   }
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: get_file - no more files.\n");
+  printk (KERN_DEBUG "cvsfs(%d): get_file - no more files.\n", info->id);
 #endif    
 
   return NULL;
@@ -278,7 +278,7 @@ cvsfs_get_attr (struct cvsfs_sb_info * info, char * name, struct cvsfs_fattr * a
   int size;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: get_attr for file %s\n", name);
+  printk (KERN_DEBUG "cvsfs(%d): get_attr for file %s\n", info->id, name);
 #endif
   size = 6 + strlen (name);
   cmd = kmalloc (size, GFP_KERNEL);
@@ -308,7 +308,7 @@ cvsfs_read (struct cvsfs_sb_info * info, char * name, char * version,
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: read - file=%s, offset=%i, count=%i\n", name, (int) offset, (int) count);
+  printk (KERN_DEBUG "cvsfs(%d): read - file=%s, offset=%i, count=%i\n", info->id, name, (int) offset, (int) count);
 #endif
   sprintf (number1, "%lli", offset);
   sprintf (number2, "%d", count);
@@ -327,7 +327,7 @@ cvsfs_read (struct cvsfs_sb_info * info, char * name, char * version,
     strcat (cmd, version);
   }
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: read - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): read - send request -->%s\n", info->id, cmd);
 #endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
@@ -365,7 +365,7 @@ cvsfs_write (struct cvsfs_sb_info * info, char * name, char * version,
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: write - file=%s, offset=%i, count=%i\n", name, (int) offset, (int) count);
+  printk (KERN_DEBUG "cvsfs(%d): write - file=%s, offset=%i, count=%i\n", info->id, name, (int) offset, (int) count);
 #endif
   sprintf (number1, "%lli", offset);
   sprintf (number2, "%d", count);
@@ -388,7 +388,7 @@ cvsfs_write (struct cvsfs_sb_info * info, char * name, char * version,
     sprintf (cmd, "put %s %s %s ", number1, number2, name);
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: write - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): write - send request -->%s\n", info->id, cmd);
 #endif
 
   memcpy (&cmd[size - count - 1], buffer, count);
@@ -400,7 +400,7 @@ cvsfs_write (struct cvsfs_sb_info * info, char * name, char * version,
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: put - returned from daemon -->%s\n", response);
+  printk (KERN_DEBUG "cvsfs(%d): put - returned from daemon -->%s\n", info->id, response);
 #endif    
 
   /* now analyze the string */
@@ -427,7 +427,7 @@ cvsfs_create_dir (struct cvsfs_sb_info * info, char * name, int mode, struct cvs
   char number[32];
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: create_dir for file %s\n", name);
+  printk (KERN_DEBUG "cvsfs(%d): create_dir for file %s\n", info->id, name);
 #endif
 
   sprintf (number, "%d", mode);
@@ -462,7 +462,7 @@ cvsfs_remove_dir (struct cvsfs_sb_info * info, char * name)
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
+  printk (KERN_DEBUG "cvsfs(%d): remove_dir for file %s\n", info->id, name);
 #endif
 
   size = 7 + strlen (name);
@@ -472,7 +472,7 @@ cvsfs_remove_dir (struct cvsfs_sb_info * info, char * name)
 
   sprintf (cmd, "rmdir %s", name);
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): remove_dir - send request -->%s\n", info->id, cmd);
 #endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
@@ -480,7 +480,7 @@ cvsfs_remove_dir (struct cvsfs_sb_info * info, char * name)
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir - returned from daemon -->%s\n", response);
+  printk (KERN_DEBUG "cvsfs(%d): remove_dir - returned from daemon -->%s\n", info->id, response);
 #endif    
 
   /* now analyze the string */
@@ -507,7 +507,7 @@ cvsfs_create_file (struct cvsfs_sb_info * info, char * name, int mode, struct cv
   char number[32];
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: create_file for file %s\n", name);
+  printk (KERN_DEBUG "cvsfs(%d): create_file for file %s\n", info->id, name);
 #endif
 
   sprintf (number, "%d", mode);
@@ -542,7 +542,7 @@ cvsfs_remove_file (struct cvsfs_sb_info * info, char * name)
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
+  printk (KERN_DEBUG "cvsfs(%d): remove_dir for file %s\n", info->id, name);
 #endif
 
   size = 8 + strlen (name);
@@ -552,7 +552,7 @@ cvsfs_remove_file (struct cvsfs_sb_info * info, char * name)
 
   sprintf (cmd, "rmfile %s", name);
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_file - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): remove_file - send request -->%s\n", info->id, cmd);
 #endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
@@ -560,7 +560,7 @@ cvsfs_remove_file (struct cvsfs_sb_info * info, char * name)
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: remove_file - returned from daemon -->%s\n", response);
+  printk (KERN_DEBUG "cvsfs(%d): remove_file - returned from daemon -->%s\n", info->id, response);
 #endif    
 
   /* now analyze the string */
@@ -591,7 +591,7 @@ cvsfs_truncate_file (struct cvsfs_sb_info * info, char * name)
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: truncate_dir for file %s\n", name);
+  printk (KERN_DEBUG "cvsfs(%d): truncate_dir for file %s\n", info->id, name);
 #endif
 
   size = 11 + strlen (name);
@@ -601,7 +601,7 @@ cvsfs_truncate_file (struct cvsfs_sb_info * info, char * name)
 
   sprintf (cmd, "truncfile %s", name);
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: truncate_file - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): truncate_file - send request -->%s\n", info->id, cmd);
 #endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
@@ -609,7 +609,7 @@ cvsfs_truncate_file (struct cvsfs_sb_info * info, char * name)
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: truncate_file - returned from daemon -->%s\n", response);
+  printk (KERN_DEBUG "cvsfs(%d): truncate_file - returned from daemon -->%s\n", info->id, response);
 #endif    
 
   /* now analyze the string */
@@ -641,7 +641,7 @@ cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retva
   int ret;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: ioctl #%d\n", action);
+  printk (KERN_DEBUG "cvsfs(%d): ioctl #%d\n", info->id, action);
 #endif
 
   sprintf (number, "%d", action);
@@ -659,7 +659,7 @@ cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retva
   else
     sprintf (cmd, "ioctl %s", number);
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: ioctl - send request -->%s\n", cmd);
+  printk (KERN_DEBUG "cvsfs(%d): ioctl - send request -->%s\n", info->id, cmd);
 #endif    
   ret = cvsfs_serialize_request (info, cmd, size, &response);
   kfree (cmd);
@@ -667,7 +667,7 @@ cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retva
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: ioctl - returned from daemon -->%s\n", response);
+  printk (KERN_DEBUG "cvsfs(%d): ioctl - returned from daemon -->%s\n", info->id, response);
 #endif    
 
   ret = simple_strtoul (response, &ptr, 0);
@@ -708,8 +708,8 @@ cvsfs_get_view (struct cvsfs_sb_info * info, char ** data)
 void
 cvsfs_reset_viewrule (struct cvsfs_sb_info * info)
 {
-  printk (KERN_DEBUG "cvsfs: cvsfs_reset_viewrule'\n");
-  printk (KERN_DEBUG "cvsfs: cvsfs_reset_viewrule - not implemented'\n");
+  printk (KERN_DEBUG "cvsfs(%d): cvsfs_reset_viewrule'\n", info->id);
+  printk (KERN_DEBUG "cvsfs(%d): cvsfs_reset_viewrule - not implemented'\n", info->id);
 }
 
 
@@ -717,8 +717,8 @@ cvsfs_reset_viewrule (struct cvsfs_sb_info * info)
 int
 cvsfs_append_viewrule (struct cvsfs_sb_info * info, char * filemask, char * rule)
 {
-  printk (KERN_DEBUG "cvsfs: cvsfs_append_viewrule - filemask: '%s', rule: '%s'\n", filemask, rule);
-  printk (KERN_DEBUG "cvsfs: cvsfs_append_viewrule - not implemented\n");
+  printk (KERN_DEBUG "cvsfs(%d): cvsfs_append_viewrule - filemask: '%s', rule: '%s'\n", info->id, filemask, rule);
+  printk (KERN_DEBUG "cvsfs(%d): cvsfs_append_viewrule - not implemented\n", info->id);
 
   return 0;
 }
@@ -728,10 +728,10 @@ int
 cvsfs_control_command (struct cvsfs_sb_info * info, char * command, char * parameter)
 {
   if (parameter)
-    printk (KERN_DEBUG "cvsfs: cvsfs_control_command - command: '%s', parameter '%s'\n", command, parameter);
+    printk (KERN_DEBUG "cvsfs(%d): cvsfs_control_command - command: '%s', parameter '%s'\n", info->id, command, parameter);
   else
-    printk (KERN_DEBUG "cvsfs: cvsfs_control_command - command: '%s'\n", command);
-  printk (KERN_DEBUG "cvsfs: cvsfs_control_command - not implemented\n");
+    printk (KERN_DEBUG "cvsfs(%d): cvsfs_control_command - command: '%s'\n", info->id, command);
+  printk (KERN_DEBUG "cvsfs(%d): cvsfs_control_command - not implemented\n", info->id);
 
   return 0;
 }

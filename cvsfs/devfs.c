@@ -391,7 +391,7 @@ int
 cvsfs_devfs_user_init (struct cvsfs_sb_info * info)
 {
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_user_init - mount point %s\n", info->mount.mountpoint);
+  printk (KERN_DEBUG "cvsfs(%d): devfs_user_init - mount point %s\n", info->id, info->mount.mountpoint);
 #endif
 
   if (info->id >= 1)
@@ -406,7 +406,7 @@ cvsfs_devfs_user_init (struct cvsfs_sb_info * info)
 
     if (info->id > 255)
     {
-      printk (KERN_DEBUG "cvsfs: devfs_user_init failed - too many mounts active\n");
+      printk (KERN_DEBUG "cvsfs(%d): devfs_user_init failed - too many mounts active\n", info->id);
       
       return -1;
     }
@@ -415,7 +415,7 @@ cvsfs_devfs_user_init (struct cvsfs_sb_info * info)
   }
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_user_init - device allocated\n");
+  printk (KERN_DEBUG "cvsfs(%d): devfs_user_init - device allocated\n", info->id);
 #endif
 
   init_waitqueue_head (&(info->device.out.full));
@@ -437,7 +437,7 @@ cvsfs_devfs_user_init (struct cvsfs_sb_info * info)
   wake_up_interruptible_sync (&cvsfs_restart_signal);  /* do not schedule */
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_user_init - successful completed\n");
+  printk (KERN_DEBUG "cvsfs(%d): devfs_user_init - successful completed\n", info->id);
 #endif
 
   return 0;
@@ -450,7 +450,7 @@ void
 cvsfs_devfs_user_cleanup (struct cvsfs_sb_info * info)
 {
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_user_cleanup - mount point %s\n", info->mount.mountpoint);
+  printk (KERN_DEBUG "cvsfs(%d): devfs_user_cleanup - mount point %s\n", info->id, info->mount.mountpoint);
 #endif
 
 //  spin_lock (&(info->device.lock));
@@ -477,14 +477,14 @@ cvsfs_devfs_user_cleanup (struct cvsfs_sb_info * info)
     wake_up (&(info->device.out.full));
 
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_user_cleanup - wait for daemon to exit\n");
+    printk (KERN_DEBUG "cvsfs(%d): devfs_user_cleanup - wait for daemon to exit\n", info->id);
 #endif
 
     /* wait until the data was sent to the daemon */
     wait_event_interruptible ((info->device.out.empty), ((info->device.in_use == 0) || (info->device.out.size == 0)));
 
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_user_cleanup - daemon exited\n");
+    printk (KERN_DEBUG "cvsfs(%d): devfs_user_cleanup - daemon exited\n", info->id);
 #endif
   }
   else
@@ -499,7 +499,7 @@ cvsfs_devfs_user_cleanup (struct cvsfs_sb_info * info)
 #endif
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_user_cleanup - successful completed\n");
+  printk (KERN_DEBUG "cvsfs(%d): devfs_user_cleanup - successful completed\n", info->id);
 #endif
 }
 
@@ -598,7 +598,7 @@ cvsfs_devfs_control_release (struct inode * ino, struct file * f)
 
   MOD_DEC_USE_COUNT;
  
-  printk (KERN_DEBUG "cvsfs: devfs_release - device /dev/cvsfs/0 closed\n");
+  printk (KERN_DEBUG "cvsfs(0): devfs_release - device /dev/cvsfs/0 closed\n");
   
   return 0;
 }
@@ -623,7 +623,7 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
   info = (struct cvsfs_sb_info *) f->private_data;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_read - claim mutex\n");
+  printk (KERN_DEBUG "cvsfs(%d): devfs_read - claim mutex\n", info->id);
 #endif
 
 //  spin_lock (&(info->device.lock));
@@ -631,13 +631,13 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
     return -ERESTARTSYS;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_read - mutex obtained\n");
+  printk (KERN_DEBUG "cvsfs(%d): devfs_read - mutex obtained\n", info->id);
 #endif
 
   if (info->device.out.size == 0)
   {
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_read - no data to send\n");
+    printk (KERN_DEBUG "cvsfs(%d): devfs_read - no data to send\n", info->id);
 #endif
 
 //    spin_unlock (&(info->device.lock));
@@ -647,14 +647,14 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
       return -EAGAIN;
 
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_read - wait for new data\n");
+    printk (KERN_DEBUG "cvsfs(%d): devfs_read - wait for new data\n", info->id);
 #endif
 
     if (wait_event_interruptible (info->device.out.full, (info->device.out.size > 0)))
       return -ERESTARTSYS;
     
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_read - claim mutex\n");
+    printk (KERN_DEBUG "cvsfs(%d): devfs_read - claim mutex\n", info->id);
 #endif
 
 //    spin_lock (&(info->device.lock));
@@ -663,7 +663,7 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
   }
       
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_read - data available\n");
+  printk (KERN_DEBUG "cvsfs(%d): devfs_read - data available\n", info->id);
 #endif
 
   if (info->device.out.readpos < info->device.out.size)
@@ -675,7 +675,7 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
       chunk = size;
     
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_read - (size=%d) data -->%s\n", chunk, info->device.out.data);
+    printk (KERN_DEBUG "cvsfs(%d): devfs_read - (size=%d) data -->%s\n", info->id, chunk, info->device.out.data);
 #endif
 
     if (copy_to_user (buf, &((info->device.out.data)[info->device.out.readpos]), chunk))
@@ -702,7 +702,7 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
       kfree (dummy);
       
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: devfs_read (last block) - exit code %d\n", ret);
+      printk (KERN_DEBUG "cvsfs(%d): devfs_read (last block) - exit code %d\n", info->id, ret);
 #endif
 
       return chunk;
@@ -717,7 +717,7 @@ cvsfs_devfs_read (struct file * f, char * buf, size_t size, loff_t * offset)
   up (&(info->device.lock));
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_read - exit code %d\n", ret);
+  printk (KERN_DEBUG "cvsfs(%d): devfs_read - exit code %d\n", info->id, ret);
 #endif
 
   return ret;
@@ -759,7 +759,7 @@ cvsfs_devfs_write (struct file * f, const char * buf, size_t size, loff_t * offs
     ret = size;		/* indicate full transfer to prevent endless loop */
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_write - exit code %d\n", ret);
+  printk (KERN_DEBUG "cvsfs(%d): devfs_write - exit code %d\n", info->id, ret);
 #endif
 
   return ret;
@@ -792,12 +792,12 @@ cvsfs_devfs_open (struct inode * ino, struct file * f)
   {			// control device is opened
     MOD_INC_USE_COUNT;
   
-    printk (KERN_DEBUG "cvsfs: devfs_open - device /dev/cvsfs/0 opened\n");
+    printk (KERN_DEBUG "cvsfs(0): devfs_open - device /dev/cvsfs/0 opened\n");
   }
   else
   {			// data device is opened
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_open - minor device %d\n", minor);
+    printk (KERN_DEBUG "cvsfs(%d): devfs_open - minor device %d\n", minor, minor);
 #endif
 
     info = cvsfs_read_lock_superblock_list ();
@@ -807,13 +807,13 @@ cvsfs_devfs_open (struct inode * ino, struct file * f)
       
     if (info == 0)
     {
-      printk (KERN_WARNING "cvsfs: devfs_open - minor %d of this device not assigned\n", minor);
-    
+      printk (KERN_WARNING "cvsfs(%d): devfs_open - minor %d of this device not assigned\n", minor, minor);
+
       return -EINVAL;
     }
 
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: devfs_open - mount point %s\n", info->mount.mountpoint);
+    printk (KERN_DEBUG "cvsfs(%d): devfs_open - mount point %s\n", info->id, info->mount.mountpoint);
 #endif
 
     f->private_data = info;
@@ -841,14 +841,14 @@ cvsfs_devfs_open (struct inode * ino, struct file * f)
       /* place the parm string as first info block for the daemon */
       cvsfs_add_request (info, info->parm_string, strlen (info->parm_string) + 1);
 
-      printk (KERN_DEBUG "cvsfs: devfs_open - device /dev/cvsfs/%s opened\n", info->idstring);
+      printk (KERN_DEBUG "cvsfs(%d): devfs_open - device /dev/cvsfs/%s opened\n", info->id, info->idstring);
     }
 #ifndef CONFIG_DEVFS_FS
   }
 #endif
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: devfs_open - exit code %d\n", retval);
+  printk (KERN_DEBUG "cvsfs(%d): devfs_open - exit code %d\n", info->id, retval);
 #endif
   
   return retval;

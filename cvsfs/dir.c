@@ -103,7 +103,7 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
       if (filldir (dirent, ".", 1, 0, inode->i_ino, DT_DIR) < 0)
         return -EIO;
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: readdir - file %s, parent inode %lu\n", ".", inode->i_ino);
+      printk (KERN_DEBUG "cvsfs(%d): readdir - file %s, parent inode %lu\n", info->id, ".", inode->i_ino);
 #endif
       f->f_pos = 1;
       break;
@@ -112,7 +112,7 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
       if (filldir (dirent, "..", 2, 1, dentry->d_parent->d_inode->i_ino, DT_DIR) < 0)
         return -EIO;
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: readdir - file %s, parent inode %lu\n", "..", inode->i_ino);
+      printk (KERN_DEBUG "cvsfs(%d): readdir - file %s, parent inode %lu\n", info->id, "..", inode->i_ino);
 #endif
       f->f_pos = 2;
       break;
@@ -133,7 +133,7 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
       if (filldir (dirent, qname.name, qname.len, f->f_pos, ino, DT_UNKNOWN) >= 0)
         ++(f->f_pos);
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: readdir - file %s, parent inode %lu\n", name, inode->i_ino);
+      printk (KERN_DEBUG "cvsfs(%d): readdir - file %s, parent inode %lu\n", info->id, name, inode->i_ino);
 #endif
       kfree (name);
   }
@@ -161,13 +161,13 @@ static int cvsfs_create (struct inode * dir, struct dentry * dentry, int mode)
   int res;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: create - mode %d\n", mode);
+  printk (KERN_DEBUG "cvsfs(%d): create - mode %d\n", info->id, mode);
 #endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -ENOMEM;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: create - name %s\n", buf);
+  printk (KERN_DEBUG "cvsfs(%d): create - name %s\n", info->id, buf);
 #endif
   if ((res = cvsfs_create_file (info, buf, mode, &fattr)) < 0)
     return res;
@@ -202,13 +202,13 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
   int retval;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: rmdir\n");
+  printk (KERN_DEBUG "cvsfs(%d): rmdir\n", info->id);
 #endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: rmdir - file %s\n", buf);
+  printk (KERN_DEBUG "cvsfs(%d): rmdir - file %s\n", info->id, buf);
 #endif
   retval = cvsfs_remove_file (info, buf);
   if (retval < 0)
@@ -239,7 +239,7 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
     return ERR_PTR (-ENOENT);
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: lookup - search for name %s\n", buf);
+  printk (KERN_DEBUG "cvsfs(%d): lookup - search for name %s\n", info->id, buf);
 #endif
   /* do we have the file ? */
   if (cvsfs_get_attr (info, buf, &fattr) >= 0)
@@ -249,7 +249,7 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
     kfree (fattr.f_version);
 
 #ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: lookup - inode %lu\n", fattr.f_ino);
+    printk (KERN_DEBUG "cvsfs(%d): lookup - inode %lu\n", info->id, fattr.f_ino);
 #endif
     if (!inode)
       return ERR_PTR (-EACCES);
@@ -275,7 +275,7 @@ static int cvsfs_mkdir (struct inode * dir, struct dentry * dentry, int mode)
   int res;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: mkdir - mode %d\n", mode);
+  printk (KERN_DEBUG "cvsfs(%d): mkdir - mode %d\n", info->id, mode);
 #endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -EIO;
@@ -313,13 +313,13 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
   int retval;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: rmdir\n");
+  printk (KERN_DEBUG "cvsfs(%d): rmdir\n", info->id);
 #endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -EIO;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: rmdir - file %s\n", buf);
+  printk (KERN_DEBUG "cvsfs(%d): rmdir - file %s\n", info->id, buf);
 #endif
   retval = cvsfs_remove_dir (info, buf);
   if (retval < 0)
