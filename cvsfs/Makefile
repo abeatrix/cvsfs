@@ -12,7 +12,8 @@ OBJECT_FILES =	cvsfs_init.o \
 		inode.o \
 		proc.o \
 		procfs.o \
-		socket.o
+		socket.o \
+		util.o
 			
 RESULT_FILE =	cvsfs.o
 

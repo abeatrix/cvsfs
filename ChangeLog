@@ -13,3 +13,9 @@
 * Bugfix: Time calculation of files fixed
 * Removed debug messages to syslog
 * Add support of procfs
+
+2001/11/15:
+* Bugfix: Procfs writes to file view and control getting an endless loop
+* Support mount options to give the mounted files defined uid's and gid's
+* Allow mount options to set the file and directory attributes (but not
+  implemented - the don't give an error message)

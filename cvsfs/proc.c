@@ -149,6 +149,9 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
     
   for (p = strtok (opts, ","); p; p = strtok (NULL, ","))
   {
+#ifdef __DEBUG__
+    printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - key = '%s'\n", p);
+#endif
     if (strncmp (p, "server=", 7) == 0)
     {
       info->address.sin_addr.s_addr = cvsfs_inet_addr (&p[7]);
@@ -178,10 +181,44 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
 	      if (strncmp (p, "mount=", 6) == 0)
 	      {
 	        strncpy (info->mnt.mountpoint, &p[6], sizeof (info->mnt.mountpoint));
+#ifdef __DEBUG__
 	        printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - mounting at %s\n", info->mnt.mountpoint);
+#endif
 	      }
 	      else
-	        printk (KERN_ERR "Invalid option '%s' passed\n", p);
+                if (strncmp (p, "uid=", 4) == 0)
+	        {
+	          info->mnt.uid = simple_strtoul (&p[4], NULL, 0);
+#ifdef __DEBUG__
+	          printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - uid = %d\n", info->mnt.uid);
+#endif
+  	        }
+	        else
+	          if (strncmp (p, "gid=", 4) == 0)
+	          {
+	            info->mnt.gid = simple_strtoul (&p[4], NULL, 0);
+#ifdef __DEBUG__
+	            printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - gid = %d\n", info->mnt.gid);
+#endif
+	          }
+	          else
+	            if (strncmp (p, "fmask=", 6) == 0)
+	            {
+	              info->mnt.file_mode = simple_strtoul (&p[6], NULL, 0) | S_IFREG;
+#ifdef __DEBUG__
+	              printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - fmask = %d\n", info->mnt.file_mode);
+#endif
+	            }
+	            else
+	              if (strncmp (p, "dmask=", 6) == 0)
+	              {
+	                info->mnt.dir_mode = simple_strtoul (&p[6], NULL, 0) | S_IFDIR;
+#ifdef __DEBUG__
+	                printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - dmask = %d\n", info->mnt.dir_mode);
+#endif
+	              }
+	              else
+	                printk (KERN_ERR "Invalid option '%s' passed\n", p);
   }
 
   return 0;
@@ -487,7 +524,7 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
         if (i == 0)				/* directory */
         {
           printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s'\n", res);
-          p->entry.mode |= S_IFDIR | S_IRUSR | S_IXUSR;
+          p->entry.mode |= info->mnt.dir_mode; // S_IFDIR | S_IRUSR | S_IXUSR;
         }
         else
           if (i == 1)				/* file */
@@ -499,7 +536,7 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
 	    else
               printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s'\n", res);
 #endif
-            p->entry.mode |= S_IFREG | S_IRUSR;
+            p->entry.mode |= info->mnt.file_mode & ~S_IWUGO; // if the file is not checked out
           }
 
         p->prev = NULL;

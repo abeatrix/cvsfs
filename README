@@ -55,6 +55,22 @@ Options:
                       the a empty password is applied.
   cvsroot=<root>      The cvs root directory. If omitted then /cvsroot is
                       used as default.
+  uid=<userid>        The remote files will be presented unter this user id
+                      to the customer. The userid may be given as user number
+		      or user name. If not given the current user id will
+		      be used.
+  gid=<groupid>       The remote files will be presented unter this group id
+                      to the customer. The userid may be given as group number
+		      or group name. If not given the current group id will
+		      be used.
+  fmask=<attribs>     The files mounted will get this file attributes.
+                      If not given the current umask will be used.
+		      Remark: The kernel driver will unmark the 'writeable'
+		              attribute as long the file is not checked
+			      out for update.
+  dmask=<attribs>     The directories mounted will get this file attributes.
+                      If not given the current umask will be used.
+
 
 		      
 If you specify for the actual cvs tool the environment variable

@@ -39,15 +39,20 @@ void help ()
   printf ("Options:\n");
   printf ("  user=<arg>       cvs username (default: anonymous)\n");
   printf ("  password=<arg>   cvs password (default: none)\n");
-  printf ("  cvsroot=<arg>    cvs root directory (default: /cvsroot)\n\n");
+  printf ("  cvsroot=<arg>    cvs root directory (default: /cvsroot)\n");
+  printf ("  uid=<arg>        owner of the remote files (default: current user)\n");
+  printf ("  gid=<arg>        group of the remote files (default: current group)\n");
+  printf ("  fmask=<arg>      filemask of the remote files (default: current umask)\n");
+  printf ("  dmask=<arg>      filemask of the remote directories (default: current umask)\n");
   printf ("This command is designed to be run from within /bin/mount by giving\n");
   printf ("the option '-t cvsfs'. For example:\n");
-  printf ("  mount -t cvsfs -o=username=cvsuser,password=heck //server/cvsfs /cvsfs\n");
+  printf ("  mount -t cvsfs -o user=cvsuser,password=heck //server/cvsfs /cvsfs\n");
 }
 
 
 
-int parse_args (int argc, char *argv[], char **user, char **password, char **cvsroot)
+int parse_args (int argc, char *argv[], char **user, char **password, char **cvsroot,
+                char **userid, char **groupid, char **filemask, char **dirmask)
 {
   int opt;
   char *opts;
@@ -56,6 +61,10 @@ int parse_args (int argc, char *argv[], char **user, char **password, char **cvs
   *user = NULL;
   *password = NULL;
   *cvsroot = NULL;
+  *userid = NULL;
+  *groupid = NULL;
+  *filemask = NULL;
+  *dirmask = NULL;
 
   opt = getopt (argc, argv, "o:");
   if (opt == 'o')
@@ -76,10 +85,22 @@ int parse_args (int argc, char *argv[], char **user, char **password, char **cvs
             if (strcmp ("cvsroot", opts) == 0)
               *cvsroot = strdup (opteq);
             else
-	    {
-	      fprintf (stderr, "invalid option ('%s')\n", opts);
-	      return -1;
-	    }
+              if (strcmp ("uid", opts) == 0)
+                *userid = strdup (opteq);
+              else
+              if (strcmp ("gid", opts) == 0)
+                *groupid = strdup (opteq);
+              else
+              if (strcmp ("fmask", opts) == 0)
+                *filemask = strdup (opteq);
+              else
+                if (strcmp ("dmask", opts) == 0)
+                  *dirmask = strdup (opteq);
+                else
+                {
+	          fprintf (stderr, "invalid option ('%s')\n", opts);
+	          return -1;
+	        }
       }
     }
   }
@@ -90,9 +111,10 @@ int parse_args (int argc, char *argv[], char **user, char **password, char **cvs
 
 
 void init_mount (char *server, char *module, char *mountpoint,
-                 char *user, char *password, char *cvsroot)
+                 char *user, char *password, char *cvsroot,
+		 char *userid, char *groupid, char *filemask, char *dirmask)
 {
-  char *args[20];
+  char *args[24];
   int status;
   int i;
   
@@ -122,6 +144,30 @@ void init_mount (char *server, char *module, char *mountpoint,
   {
     args[i++] = "-r";
     args[i++] = cvsroot;
+  }
+  
+  if (userid != NULL)
+  {
+    args[i++] = "-i";
+    args[i++] = userid;
+  }
+  
+  if (groupid != NULL)
+  {
+    args[i++] = "-g";
+    args[i++] = groupid;
+  }
+  
+  if (filemask != NULL)
+  {
+    args[i++] = "-f";
+    args[i++] = filemask;
+  }
+  
+  if (dirmask != NULL)
+  {
+    args[i++] = "-d";
+    args[i++] = dirmask;
   }
   
   if (fork () == 0)
@@ -161,6 +207,10 @@ int main(int argc, char *argv[])
   char *user;
   char *password;
   char *cvsroot;
+  char *userid;
+  char *groupid;
+  char *filemask;
+  char *dirmask;
   
   if ((argc < 2) || (argv[1][0] == '-'))
   {
@@ -185,13 +235,13 @@ int main(int argc, char *argv[])
   argv += 2;
   argc -= 2;
   
-  if (parse_args (argc, argv, &user, &password, &cvsroot) != 0)
+  if (parse_args (argc, argv, &user, &password, &cvsroot, &userid, &groupid, &filemask, &dirmask) != 0)
   {
     help ();
     return -1;
   }
 
-  init_mount (server, module, mountpoint, user, password, cvsroot);  
+  init_mount (server, module, mountpoint, user, password, cvsroot, userid, groupid, filemask, dirmask);  
   
   return EXIT_SUCCESS;
 }

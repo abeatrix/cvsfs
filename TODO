@@ -1,6 +1,14 @@
-Obtain file size from cvs
-Obtain sile date from cvs
-Read file contents from cvs
-cvsfs should get the proper kernel version compiled in
-Support for kernel 2.2.x ?
+Short term:
+-----------
+
+* Enable the support for user selectable file and directory attributes.
+* Support versioned kernel symbols
+* Support write operations to the file system
+
+
+Long term:
+----------
+
+* Enchance GNU make to support logging via this driver to evaluate the
+  file dependencies.
 

@@ -29,6 +29,9 @@
 #include <fcntl.h>
 #include <sys/param.h>           /* defines MAXPATHLEN */
 #include <netdb.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
 #include <arpa/inet.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -44,6 +47,10 @@ void help ()
   printf ("  -m project   module name\n");
   printf ("  -u user      user account at cvs server (anonymous if not given)\n");
   printf ("  -p password  password at cvs server (default is <none>)\n");
+  printf ("  -i uid       user id of the remote files (default is current uid)\n");
+  printf ("  -g gid       group id of the remote files (default is current uid)\n");
+  printf ("  -f mask      file mask of the remote files (default is current umask)\n");
+  printf ("  -d mask      file mask of the remote directories (default is current umask)\n");
   printf ("  -h           print this help screen\n");
 }
 
@@ -87,18 +94,120 @@ char *evaluate_ip (const char *host)
 
 
 
+char *current_uid ()
+{
+  static char buffer[32];
+  
+  sprintf (buffer, "%lu", (unsigned long) getuid ());
+  
+  return buffer;
+}
+
+
+
+char *current_gid ()
+{
+  static char buffer[32];
+  
+  sprintf (buffer, "%lu", (unsigned long) getgid ());
+  
+  return buffer;
+}
+
+
+
+char *current_umask ()
+{
+  static char buffer[32];
+  
+  sprintf (buffer, "%lu", (unsigned long) 420 /* getumask () */);
+  
+  return buffer;
+}
+
+
+
+char *current_dmask ()
+{
+  static char buffer[32];
+  
+  sprintf (buffer, "%lu", (unsigned long) 493 /* getumask () */);
+  
+  return buffer;
+}
+
+
+
+char *convert_uid (char * uid)
+{
+  static char buffer[32];
+
+  if (isdigit (*uid) != 0)
+  {
+    sprintf (buffer, "%lu", strtoul (uid, NULL, 0));
+  }
+  else
+  {
+    struct passwd *uidentry;
+    
+    if ((uidentry = getpwnam (uid)) != NULL)    
+      sprintf (buffer, "%lu", (unsigned long) uidentry->pw_uid);
+    else
+      return NULL;
+  }
+  
+  return buffer;
+}
+
+
+
+char *convert_gid (char * gid)
+{
+  static char buffer[32];
+
+  if (isdigit (*gid) != 0)
+  {
+    sprintf (buffer, "%lu", strtoul (gid, NULL, 0));
+  }
+  else
+  {
+    struct group *gidentry;
+    
+    if ((gidentry = getgrnam (gid)) != NULL)
+      sprintf (buffer, "%lu", (unsigned long) gidentry->gr_gid);
+    else
+      return NULL;
+  }
+  
+  return buffer;
+}
+
+
+
+char *convert_umask (char * umask)
+{
+  return "420";
+}
+
+
+
 int parse_args (int argc, char *argv[], char **data, char **share)
 {
   int opt;
   int server_found = 0;
   int module_found = 0;
+  int uid_found = 0;
+  int gid_found = 0;
+  int fmask_found = 0;
+  int dmask_found = 0;
   char *server;
   char *module;
+  char *help;
 
   *data = malloc (1);
   **data = '\0';
   
-  while ((opt = getopt (argc, argv, "s:r:m:u:p:")) != EOF)
+  while ((opt = getopt (argc, argv, "s:r:m:u:p:i:g:f:d:")) != EOF)
   {
     switch (opt)
     {
@@ -138,6 +247,44 @@ int parse_args (int argc, char *argv[], char **data, char **share)
         add_option (data, "password", optarg);
         break;
 	
+      case 'i':
+        if ((help = convert_uid (optarg)) != NULL)
+	{
+          add_option (data, "uid", help);
+	  uid_found = 1;
+	}
+	else
+	{
+          fprintf (stderr, "user id '%s' does not exist\n", optarg);
+	  
+	  return -1;
+	}
+        break;
+	
+      case 'g':
+        if ((help = convert_gid (optarg)) != NULL)
+	{
+          add_option (data, "gid", help);
+	  gid_found = 1;
+	}
+	else
+	{
+          fprintf (stderr, "group id '%s' does not exist\n", optarg);
+	  
+	  return -1;
+	}
+        break;
+	
+      case 'f':
+        add_option (data, "fmask", convert_umask (optarg));
+	fmask_found = 1;
+        break;
+	
+      case 'd':
+        add_option (data, "dmask", convert_umask (optarg));
+	dmask_found = 1;
+        break;
+	
       default:
         return -1;
     }
@@ -154,6 +301,18 @@ int parse_args (int argc, char *argv[], char **data, char **share)
     fprintf (stderr, "No cvs module given\n");
     return -1;
   }
+
+  if (uid_found == 0)
+    add_option (data, "uid", current_uid ());
+
+  if (gid_found == 0)
+    add_option (data, "gid", current_gid ());
+
+  if (fmask_found == 0)
+    add_option (data, "fmask", current_umask ());
+
+  if (dmask_found == 0)
+    add_option (data, "dmask", current_dmask ());
 
   *share = malloc (strlen (server) + strlen (module) + 4);
 
