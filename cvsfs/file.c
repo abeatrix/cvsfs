@@ -87,12 +87,12 @@ cvsfs_file_release (struct inode * inode, struct file * file)
 static int
 cvsfs_file_permission (struct inode * inode, int mask)
 {
-  int mode = inode->i_mode;
+//  int mode = inode->i_mode;
 
-  mode >>= 6;
+//  mode >>= 6;
 
-  if ((mode & 7 & mask) != mask)
-    return -EACCES;
+//  if ((mode & 7 & mask) != mask)
+//    return -EACCES;
 
   return 0;
 }

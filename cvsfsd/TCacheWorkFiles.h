@@ -22,6 +22,8 @@
 
 // forward reference
 class TCachedFile;
+class TDirectory;
+class TFileData;
 
 
 class TCacheWorkFiles : public TCache
@@ -31,7 +33,15 @@ class TCacheWorkFiles : public TCache
 
     TCachedFile * CachedFile (const std::string &) const;
 
+    bool LoadTree (TDirectory &);
+    bool MakeDirectory (const std::string &, int);
+    int RemoveDirectory (const std::string &);
+    bool MakeFile (const std::string &, int);
+    bool FileData (const std::string &, TFileData &);
+
   private:
+    bool LoadDir (TDirectory &, const std::string &);
+
     std::string fMountpoint;
 };
 

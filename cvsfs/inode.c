@@ -57,15 +57,17 @@ cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
   switch (inode->i_mode & S_IFMT)
   {
     case S_IFREG:			/* regular file */
+      printk (KERN_DEBUG "cvsfs: regular file\n");
       inode->i_op = &cvsfs_file_inode_operations;
       inode->i_fop = &cvsfs_file_operations;
       inode->i_data.a_ops = &cvsfs_file_aops;
       break;
 
     case S_IFDIR:			/* directory */
+      printk (KERN_DEBUG "cvsfs: directory\n");
       inode->i_op = &cvsfs_dir_inode_operations;
       inode->i_fop = &cvsfs_dir_operations;
-       break;
+      break;
 
 //    case S_IFLNK:*/			/* symlink */
 //      inode->i_op = &cvsfs_symlink_inode_operations;

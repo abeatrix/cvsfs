@@ -789,13 +789,13 @@ cvsfs_devfs_open (struct inode * ino, struct file * f)
   minor = MINOR (ino->i_rdev);
 
   if (minor == 0)
-  {
+  {			// control device is opened
     MOD_INC_USE_COUNT;
   
     printk (KERN_DEBUG "cvsfs: devfs_open - device /dev/cvsfs/0 opened\n");
   }
   else
-  {
+  {			// data device is opened
 #ifdef __DEBUG__
     printk (KERN_DEBUG "cvsfs: devfs_open - minor device %d\n", minor);
 #endif

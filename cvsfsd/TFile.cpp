@@ -57,6 +57,7 @@ void TFile::SetData (const TFileData & data)
 
 void TFile::streamData (std::ostream & str) const
 {
-  fData.streamData (str, S_IFREG, fSource == TEntry::RemoteSource);
-  str << " " << fVersion;
+  fData.streamData (str, S_IFREG, fSource == TEntry::Remote);
+  if (fVersion.length () > 0)
+    str << " " << fVersion;
 }

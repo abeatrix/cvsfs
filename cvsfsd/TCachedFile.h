@@ -35,6 +35,8 @@ class TCachedFile
     std::ostream * OpenForWrite () const;
     std::istream * OpenForRead () const;
 
+    int ReadFile (char *, unsigned long, int) const;
+
   private:
     std::string	fDir;
     std::string	fName;

@@ -37,7 +37,7 @@ class TFileData
     const int GetMtime () const { return fMtime; }
     const int GetCtime () const { return fCtime; }
     void SetSize (unsigned long size) { fSize = size; }
-    void SetAttribute (int attr) { fAttrib = attr; }
+    void SetAttribute (int attr);
     void SetAtime (int time) { fAtime = time; }
     void SetMtime (int time) { fMtime = time; }
     void SetCtime (int time) { fCtime = time; }

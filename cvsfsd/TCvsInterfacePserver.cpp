@@ -25,6 +25,7 @@
 
 #include <time.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include "TFile.h"
 #include "TVersionedFile.h"
 #include "TMountParameters.h"
@@ -37,7 +38,8 @@
 
 TCvsInterfacePserver::TCvsInterfacePserver (const TMountParameters & parms)
 : TCvsInterface (), fConnection (parms),
-  fVersionedCache ("/var/cache/cvsfs", fConnection.GetServer (), fConnection.GetRoot ())
+  fVersionedCache ("/var/cache/cvsfs", fConnection.GetServer (), fConnection.GetRoot ()),
+  fWorkCache ("/var/cache/cvsfs", fConnection.GetMountPoint ())
 {
 }
 
@@ -110,8 +112,8 @@ const TEntry * TCvsInterfacePserver::GetFullEntry (const std::string & path,
   if (entry != 0)
   {
     // attributes not available - go to get them from cvs server
-    if (entry->isA () == TEntry::FileEntry)
-    {					// load attributes for a file
+    if (entry->isA () == TEntry::VersionedFileEntry)
+    {					// load attributes for a versioned file
       TVersionedFile *file = static_cast<TVersionedFile *> (entry);
 
       std::string realversion;
@@ -132,27 +134,160 @@ const TEntry * TCvsInterfacePserver::GetFullEntry (const std::string & path,
     }
     else
     {
-      if (!(entry->ValidData ()))
-      {					// load attributes for a directory
-        TDirectory *dir = static_cast<TDirectory *> (entry);
-
-        // a directory does not have attributes in cvs per se
-        // so allocate a dummy file data record
-        // this may change in future
-
-        TFileData dummy;
-
-        dummy.SetAttribute (S_IXUSR | S_IRUSR | S_IWUSR |
-			    S_IXGRP | S_IRGRP | S_IWGRP |
-			    S_IXOTH | S_IROTH | S_IWOTH);
-
-        dir->SetData (dummy);
+      if (entry->isA () == TEntry::FileEntry)
+      {					// load attributes for a file
+        // attributes already set - nothing to do
       }
+      else
+        if (!(entry->ValidData ()))
+        {				// load attributes for a directory
+          TDirectory *dir = static_cast<TDirectory *> (entry);
+
+          // a directory does not have attributes in cvs per se
+          // so allocate a dummy file data record
+          // this may change in future
+
+          TFileData dummy;
+
+          dummy.SetAttribute (S_IXUSR | S_IRUSR | S_IWUSR |
+			      S_IXGRP | S_IRGRP | S_IWGRP |
+			      S_IXOTH | S_IROTH | S_IWOTH);
+
+          dir->SetData (dummy);
+        }
     }
   }
 
   return entry;
 }
+
+
+
+const TEntry * TCvsInterfacePserver::MakeDirectory (const std::string & path,
+						    const std::string & version,
+						    int mode)
+{
+  if (!LoadTree ())
+    return 0;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  TEntry *entry = FindEntry (&fRootDir, fullpath);
+  if (entry)
+    return 0;
+
+  if (!fWorkCache.MakeDirectory (fullpath, mode))
+    return 0;
+
+  TDirectory * dir = AllocateDir (&fRootDir, fullpath);
+  if (dir)
+  {
+    TFileData dummy;
+
+    if (!fWorkCache.FileData (fullpath, dummy))
+      return 0;
+
+    dir->SetData (dummy);
+    dir->SetSource (TEntry::Local);
+  }
+
+  return dir;
+}
+
+
+
+int TCvsInterfacePserver::RemoveDirectory (const std::string & path,
+					   const std::string & version)
+{
+  if (!LoadTree ())
+    return 0;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  TEntry *entry = FindEntry (&fRootDir, fullpath);
+
+  if (entry == 0)
+    return ENOENT;
+
+  if (entry->isA () != TEntry::DirEntry)
+    return ENOTDIR;
+
+  if (entry->GetSource () != TEntry::Local)
+    return EROFS;
+
+  int retval = fWorkCache.RemoveDirectory (fullpath);
+
+  if (retval == 0)
+    RemoveEntry (fullpath);
+
+  return retval;
+}
+
+
+
+const TEntry * TCvsInterfacePserver::MakeFile (const std::string & path,
+					       const std::string & version,
+					       int mode)
+{
+  if (!LoadTree ())
+    return 0;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  std::string filename;
+
+  TDirectory *dir = GetParentDirectory (fullpath, filename);
+  if (!dir)
+    return 0;
+
+  if (!fWorkCache.MakeFile (fullpath, mode))
+    return 0;
+
+  TFile *file = new TFile (filename, "");
+  if (!file)
+  {
+    TFileData dummy;
+
+    if (!fWorkCache.FileData (fullpath, dummy))
+    {
+      delete file;
+
+      return 0;
+    }
+
+    dir->SetData (dummy);
+    dir->SetSource (TEntry::Local);
+
+    dir->AddEntry (file);
+  }
+
+  return file;
+}
+
 
 
 
@@ -176,15 +311,34 @@ int TCvsInterfacePserver::GetFile (const std::string & path,
 
   TEntry *entry = FindEntry (&fRootDir, fullpath);
 
-  if ((entry != 0) && (entry->isA () == TEntry::FileEntry))
+  if (entry == 0)
+    return -1;		// file not known
+
+  if (entry->isA () != TEntry::DirEntry)
   {
-    TVersionedFile *file = static_cast<TVersionedFile *> (entry);
+    if (entry->isA () == TEntry::VersionedFileEntry)
+    {
+      TVersionedFile *file = static_cast<TVersionedFile *> (entry);
 
-    if (file->FindVersion (version) == 0)
-      if (!LoadAttribute (fullpath, version, *file))
-        return 0;
+      if (file->FindVersion (version) == 0)
+        if (!LoadAttribute (fullpath, version, *file))
+          return 0;
 
-    return LoadFile (fullpath, version, *file, start, count, buffer);
+        return LoadFile (fullpath, version, *file, start, count, buffer);
+    }
+    else
+      if (entry->GetSource () == TEntry::Local)
+      {
+        TCachedFile *file = fWorkCache.CachedFile (fullpath);
+        if (file)
+        {
+          count = file->ReadFile (buffer, start, count);
+
+          delete file;
+
+          return count;
+        }
+      }
   }
 
   return -1;	// file not known
@@ -194,11 +348,21 @@ int TCvsInterfacePserver::GetFile (const std::string & path,
 
 bool TCvsInterfacePserver::LoadTree ()
 {
-  TSyslog *log = TSyslog::instance ();
-  std::string response;
-
   if (fTreeLoaded)
     return true;
+
+  if (!LoadCvsTree ())
+    return false;
+
+  return fWorkCache.LoadTree (fRootDir);
+}
+
+
+
+bool TCvsInterfacePserver::LoadCvsTree ()
+{
+  TSyslog *log = TSyslog::instance ();
+  std::string response;
 
   TCvsSession *session = fConnection.Open ();
   if (session == 0)
@@ -239,7 +403,7 @@ bool TCvsInterfacePserver::LoadTree ()
             if (basedir.length () != 0)
               name.erase (0, basedir.length () + 1);
 
-            AddFile (dir, name, version);
+            AddVersionedFile (dir, name, version);
 
             log->debug << "File: " << name << " - version " << version << std::endl;
           }
@@ -323,6 +487,45 @@ TEntry *TCvsInterfacePserver::FindEntry (TDirectory * root,
 
 
 
+void TCvsInterfacePserver::RemoveEntry (const std::string & path)
+{
+  std::string::size_type pos;
+
+  if ((path.length () == 0) || (path == "."))	// get the root ?
+    return;
+
+  TDirectory *dir = &fRootDir;
+  std::string directory = path;
+
+  pos = directory.find ("/");
+  while (pos != std::string::npos)
+  {
+    std::string dirpart = directory;
+
+    dirpart.erase (pos);
+    directory.erase (0, pos + 1);
+
+    TEntry *actual = dir->FindEntry (dirpart);
+
+    if (actual == 0)
+      return;
+
+    if (actual->isA () != TEntry::DirEntry)
+      return;
+
+    dir = static_cast<TDirectory *> (actual);
+
+    pos = directory.find ("/");
+  }
+
+  // now we are in the parent of the to delete directory
+  TEntry *entry = dir->FindEntry (directory);
+  if (entry)
+    dir->RemoveEntry (entry);
+}
+
+
+
 TDirectory *TCvsInterfacePserver::AllocateDir (TDirectory * rootdir,
 					       const std::string & path) const
 {
@@ -373,9 +576,9 @@ TDirectory *TCvsInterfacePserver::AllocateDir (TDirectory * rootdir,
 
 
 
-TVersionedFile *TCvsInterfacePserver::AddFile (TDirectory * dir,
-					       const std::string & name,
-					       const std::string & version) const
+TVersionedFile *TCvsInterfacePserver::AddVersionedFile (TDirectory * dir,
+							const std::string & name,
+							const std::string & version) const
 {
   TVersionedFile *file;
   TEntry *entry = dir->FindEntry (name);
@@ -738,27 +941,56 @@ int TCvsInterfacePserver::LoadFile (const std::string & path,
     }
   }
 
-  std::istream *src = cachedFile->OpenForRead ();
-  if (src == 0)
-  {
-    delete cachedFile;
-    return -1;
-  }
-
-  unsigned long end = start + count;
-  if (end > filedata.GetSize ())
-    end = filedata.GetSize ();
-
-  count = end - start;
-
-  if (start != 0)
-    src->seekg (start, std::ostream::beg);
-
-  src->read (buffer, count);
-
-  delete src;
+  count = cachedFile->ReadFile (buffer, start, count);
 
   delete cachedFile;
 
   return count;
+}
+
+
+
+TDirectory *TCvsInterfacePserver::GetParentDirectory (const std::string & path,
+						      std::string & filename)
+{
+  std::string::size_type pos;
+
+  if ((path.length () == 0) || (path == "."))	// get the root ?
+    return 0;
+
+  TDirectory *dir = &fRootDir;
+  std::string directory = path;
+
+  pos = directory.find ("/");
+  while (pos != std::string::npos)
+  {
+    std::string dirpart = directory;
+
+    dirpart.erase (pos);
+    directory.erase (0, pos + 1);
+
+    TEntry *actual = dir->FindEntry (dirpart);
+
+    if (actual == 0)
+    {
+      TDirectory *newdir = new TDirectory (dirpart);
+      if (!newdir)
+        return 0;	// out of memory
+
+      dir->AddEntry (newdir);
+      actual = newdir;
+    }
+
+    if (actual->isA () != TEntry::DirEntry)
+      return 0;
+
+    dir = static_cast<TDirectory *> (actual);
+
+    pos = directory.find ("/");
+  }
+
+  // now we are in the parent of the to be added file
+  filename = directory;
+
+  return dir;
 }

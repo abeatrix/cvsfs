@@ -30,17 +30,17 @@ class TEntry
     typedef enum
     {
       DirEntry,
-      FileEntry
+      FileEntry,
+      VersionedFileEntry
     } EntryType;
 
     typedef enum
     {
-      RemoteSource,
-      LocalSource,
-      NewEntry
+      Remote,
+      Local,
     } EntrySource;
 
-    TEntry (const std::string & name) : fName (name), fSource (RemoteSource) {}
+    TEntry (const std::string & name) : fName (name), fSource (Remote) {}
     virtual ~TEntry ();
 
     std::ostream & operator << (std::ostream &) const;

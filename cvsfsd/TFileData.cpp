@@ -34,7 +34,8 @@ TFileData::TFileData ()
 
 TFileData::TFileData (unsigned long size, int mode,
                       int atime, int mtime, int ctime)
-: fSize (size), fAttrib (mode), fAtime (atime), fMtime (mtime), fCtime (ctime)
+: fSize (size), fAttrib (mode & (S_IRWXU | S_IRWXG | S_IRWXO)),
+  fAtime (atime), fMtime (mtime), fCtime (ctime)
 {
 }
 
@@ -44,6 +45,13 @@ TFileData::TFileData (const TFileData & clone)
 : fSize (clone.fSize), fAttrib (clone.fAttrib),
   fAtime (clone.fAtime), fMtime (clone.fMtime), fCtime (clone.fCtime)
 {
+}
+
+
+
+void TFileData::SetAttribute (int attr)
+{
+  fAttrib = attr & (S_IRWXU | S_IRWXG | S_IRWXO);
 }
 
 

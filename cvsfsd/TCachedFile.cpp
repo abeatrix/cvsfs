@@ -62,6 +62,38 @@ std::istream * TCachedFile::OpenForRead () const
 
 
 
+int TCachedFile::ReadFile (char * buffer, unsigned long start, int count) const
+{
+  std::string fullpath = fDir + "/" + fName;
+  struct stat info;
+
+  if (lstat (fullpath.c_str (), &info) != 0)
+    return -1;
+
+  off_t end = start + count;
+  if (end > info.st_size)
+    end = info.st_size;
+
+  if (end < static_cast<off_t> (start))
+    return 0;
+
+  count = end - start;
+
+  std::ifstream src (fullpath.c_str ());
+
+  if (!src.is_open ())
+    return -1;
+
+  if (start != 0)
+    src.seekg (start, std::ostream::beg);
+
+  src.read (buffer, count);
+
+  return count;
+}
+
+
+
 bool TCachedFile::DirExist () const
 {
   struct stat info;

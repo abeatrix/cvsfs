@@ -48,6 +48,9 @@ class TCvsInterface
     virtual const TEntry * GetEntry (const std::string &, int) = 0;
     virtual const TEntry * GetFullEntry (const std::string &, const std::string &) = 0;
     virtual int GetFile (const std::string &, const std::string &, unsigned long, int, char *) = 0;
+    virtual const TEntry * MakeDirectory (const std::string &, const std::string &, int) = 0;
+    virtual int RemoveDirectory (const std::string &, const std::string &) = 0;
+    virtual const TEntry * MakeFile (const std::string &, const std::string &, int) = 0;
 
   protected:
     TDirectory	fRootDir;

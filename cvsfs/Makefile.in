@@ -325,13 +325,13 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
 
 install-exec-hook:
-	/sbin/depmod -a
+	[ "$(DESTDIR)" ] || /sbin/depmod -a
 
 install-exec-local:
-	../makedevs
+	[ "$(DESTDIR)" ] || ../makedevs
 
 uninstall-local:
-	../rmdevs
+	[ "$(DESTDIR)" ] || ../rmdevs
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

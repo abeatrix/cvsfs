@@ -151,6 +151,73 @@ cvsfs_serialize_request (struct cvsfs_sb_info * info, char * buf, int size, char
 }
 
 
+/* this local function sends a given command to the daemon            */
+/* the expected return is from the daemon is:                         */
+/*   <mode> <size> <atime> <mtime> <ctime> <version> '\0'             */
+/* all values (except version) are be represented as decimal numbers  */
+static int
+cvsfs_send_response_attr (char * cmd, struct cvsfs_sb_info * info, struct cvsfs_fattr * attr)
+{
+  char * response;
+  char * ptr;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: send_resonse_attr - send request -->%s\n", cmd);
+#endif    
+  ret = cvsfs_serialize_request (info, cmd, strlen (cmd) + 1, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -1;
+
+  /* for security - not to access unallocated memory areas */
+//  response[ret - 1] = '\0';
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: send_resonse_attr - returned from daemon -->%s\n", response);
+#endif    
+
+  /* set fixed value fields */
+  attr->f_nlink = 1;
+  attr->f_blksize = 1024;
+
+  /* now analyze the string */
+  attr->f_mode = simple_strtoul (response, &ptr, 0);
+  if (*ptr != '\0')
+    ++ptr;
+  attr->f_size = simple_strtoul (ptr, &ptr, 0);
+  if (*ptr != '\0')
+    ++ptr;
+  attr->f_atime = simple_strtoul (ptr, &ptr, 0);
+  if (*ptr != '\0')
+    ++ptr;
+  attr->f_mtime = simple_strtoul (ptr, &ptr, 0);
+  if (*ptr != '\0')
+    ++ptr;
+  attr->f_ctime = simple_strtoul (ptr, &ptr, 0);
+  if (*ptr != '\0')
+    ++ptr;
+  attr->f_version = strdup (ptr);
+
+  attr->f_uid = info->mount.uid;
+  attr->f_gid = info->mount.gid;
+
+  /* mask the attributes with the given umask */
+  if ((attr->f_mode & S_IFDIR) != 0)
+    attr->f_mode &= (info->mount.dir_mode | ~S_IRWXUGO);
+  else
+    if ((attr->f_mode & S_IFREG) != 0)
+      attr->f_mode &= (info->mount.file_mode | ~S_IRWXUGO);
+
+  /* calculate the number of blocks */
+  attr->f_blocks = (attr->f_size + attr->f_blksize - 1) / attr->f_blksize;
+
+  kfree (response);
+
+  return 0;
+}
+
+
 
 /* this function asks the daemon for a file name */
 /* it sends                                      */
@@ -206,8 +273,6 @@ int
 cvsfs_get_attr (struct cvsfs_sb_info * info, char * name, struct cvsfs_fattr * attr)
 {
   char * cmd;
-  char * response;
-  char * ptr;
   int size;
   int ret;
 
@@ -220,59 +285,12 @@ cvsfs_get_attr (struct cvsfs_sb_info * info, char * name, struct cvsfs_fattr * a
     return -1;
 
   sprintf (cmd, "attr %s", name);
-#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: get_attr - send request -->%s\n", cmd);
-#endif    
-  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  
+  ret = cvsfs_send_response_attr (cmd, info, attr);
+
   kfree (cmd);
-  if (ret <= 0)		/* error, daemon not running or empty response */
-    return -1;
-
-  /* for security - not to access unallocated memory areas */
-//  response[ret - 1] = '\0';
-
-#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: get_attr - returned from daemon -->%s\n", response);
-#endif    
-
-  /* set fixed value fields */
-  attr->f_nlink = 1;
-  attr->f_blksize = 1024;
-
-  /* now analyze the string */
-  attr->f_mode = simple_strtoul (response, &ptr, 0);
-  if (*ptr != '\0')
-    ++ptr;
-  attr->f_size = simple_strtoul (ptr, &ptr, 0);
-  if (*ptr != '\0')
-    ++ptr;
-  attr->f_atime = simple_strtoul (ptr, &ptr, 0);
-  if (*ptr != '\0')
-    ++ptr;
-  attr->f_mtime = simple_strtoul (ptr, &ptr, 0);
-  if (*ptr != '\0')
-    ++ptr;
-  attr->f_ctime = simple_strtoul (ptr, &ptr, 0);
-  if (*ptr != '\0')
-    ++ptr;
-  attr->f_version = strdup (ptr);
-
-  attr->f_uid = info->mount.uid;
-  attr->f_gid = info->mount.gid;
-
-  /* mask the attributes with the given umask */
-  if ((attr->f_mode & S_IFDIR) != 0)
-    attr->f_mode &= (info->mount.dir_mode | ~S_IRWXUGO);
-  else
-    if ((attr->f_mode & S_IFREG) != 0)
-      attr->f_mode &= (info->mount.file_mode | ~S_IRWXUGO);
-
-  /* calculate the number of blocks */
-  attr->f_blocks = (attr->f_size + attr->f_blksize - 1) / attr->f_blksize;
-
-  kfree (response);
-
-  return 0;
+  
+  return ret;
 }
 
 
@@ -324,6 +342,127 @@ cvsfs_read (struct cvsfs_sb_info * info, char * name, char * version,
 
   kfree (response);
 
+  return ret;
+}
+
+
+
+/* this function asks the daemon create a new directory               */
+/* the request sent to the daemon has this layout:                    */
+/*   mkdir <full path of file> <requested access mode>                */
+/* the expected return is from the daemon is:                         */
+/*   <mode> <size> <atime> <mtime> <ctime> <version> '\0'             */
+/* all values (except version) are be represented as decimal numbers  */
+int
+cvsfs_create_dir (struct cvsfs_sb_info * info, char * name, int mode, struct cvsfs_fattr * attr)
+{
+  char * cmd;
+  int size;
+  int ret;
+  char number[32];
+
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: create_dir for file %s\n", name);
+//#endif
+
+  sprintf (number, "%d", mode);
+
+  size = 8 + strlen (name) + strlen (number);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -1;
+
+  sprintf (cmd, "mkdir %s %s", name, number);
+
+  ret = cvsfs_send_response_attr (cmd, info, attr);
+
+  kfree (cmd);
+  
+  return ret;
+}
+
+
+
+/* this function asks the daemon remove a directory                   */
+/* the request sent to the daemon has this layout:                    */
+/*   rmdir <full path of file>                                        */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> '\0'                                           */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_remove_dir (struct cvsfs_sb_info * info, char * name)
+{
+  char * cmd;
+  char * response;
+  char * ptr;
+  int size;
+  int ret;
+
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir for file %s\n", name);
+//#endif
+
+  size = 7 + strlen (name);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  sprintf (cmd, "rmdir %s", name);
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir - send request -->%s\n", cmd);
+//#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: remove_dir - returned from daemon -->%s\n", response);
+//#endif    
+
+  /* now analyze the string */
+  ret = simple_strtoul (response, &ptr, 0);
+
+  kfree (response);
+
+  return -ret;
+}
+
+
+
+/* this function asks the daemon create a new file                    */
+/* the request sent to the daemon has this layout:                    */
+/*   mkfile <full path of file> <requested access mode>               */
+/* the expected return is from the daemon is:                         */
+/*   <mode> <size> <atime> <mtime> <ctime> <version> '\0'             */
+/* all values (except version) are be represented as decimal numbers  */
+int
+cvsfs_create_file (struct cvsfs_sb_info * info, char * name, int mode, struct cvsfs_fattr * attr)
+{
+  char * cmd;
+  int size;
+  int ret;
+  char number[32];
+
+//#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: create_file for file %s\n", name);
+//#endif
+
+  sprintf (number, "%d", mode);
+
+  size = 9 + strlen (name) + strlen (number);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -1;
+
+  sprintf (cmd, "mkfile %s %s", name, number);
+
+  ret = cvsfs_send_response_attr (cmd, info, attr);
+
+  kfree (cmd);
+  
   return ret;
 }
 

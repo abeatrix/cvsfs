@@ -39,6 +39,9 @@ struct cvsfs_proc_info
 char * cvsfs_get_file (struct cvsfs_sb_info *, char *, int);
 int cvsfs_get_attr (struct cvsfs_sb_info *, char *, struct cvsfs_fattr *);
 int cvsfs_read (struct cvsfs_sb_info *, char *, char *, unsigned long, unsigned long, char *);
+int cvsfs_create_dir (struct cvsfs_sb_info *, char *, int, struct cvsfs_fattr *);
+int cvsfs_remove_dir (struct cvsfs_sb_info *, char *);
+int cvsfs_create_file (struct cvsfs_sb_info *, char *, int, struct cvsfs_fattr *);
 
 /* functions required by procfs interface */
 int cvsfs_get_view (struct cvsfs_sb_info *, char **);

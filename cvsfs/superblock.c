@@ -240,7 +240,7 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
   sb->s_blocksize_bits = 10; /* PAGE_CHACHE_SHIFT; */
   sb->s_magic = CVSFS_SUPER_MAGIC;
 /*  sb->s_flags = 0;  */
-  sb->s_flags |= MS_RDONLY;
+/*  sb->s_flags |= MS_RDONLY; */
   sb->s_op = &cvsfs_sops;
 
   info->mount.file_mode = S_IRWXU | S_IRGRP | S_IROTH | S_IFREG;

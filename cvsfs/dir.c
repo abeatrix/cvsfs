@@ -33,7 +33,7 @@
 #include "proc.h"
 #include "util.h"
 
-//#define __DEBUG__
+#define __DEBUG__
 
 
 /* forward references - directory operations */
@@ -48,10 +48,18 @@ struct file_operations cvsfs_dir_operations = {
 
 					      					
 /* forward references - directory inode operations */
+static int cvsfs_create (struct inode *, struct dentry *, int);
 static struct dentry * cvsfs_lookup (struct inode *, struct dentry *);
+static int cvsfs_mkdir (struct inode *, struct dentry *, int);
+static int cvsfs_rmdir (struct inode *, struct dentry *);
+//static int cvsfs_dir_permission (struct inode *, int);
 
 struct inode_operations cvsfs_dir_inode_operations = {
-						       lookup:	cvsfs_lookup,
+						       create:		cvsfs_create,
+						       lookup:		cvsfs_lookup,
+						       mkdir:		cvsfs_mkdir,
+						       rmdir:		cvsfs_rmdir,
+//						       permission:	cvsfs_dir_permission,
 						     };
 
 
@@ -85,27 +93,33 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
   char * name;
 
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
-    return -1;
+    return -EIO;
 
   switch ((unsigned int) f->f_pos)
   {
     case 0:
       if (filldir (dirent, ".", 1, 0, inode->i_ino, DT_DIR) < 0)
-        return 0;
+        return -EIO;
 
+      printk (KERN_DEBUG "cvsfs: readdir - file %s, parent inode %lu\n", ".", inode->i_ino);
+      
       f->f_pos = 1;
+      break;
 
     case 1:
       if (filldir (dirent, "..", 2, 1, dentry->d_parent->d_inode->i_ino, DT_DIR) < 0)
-        return 0;
+        return -EIO;
 
+      printk (KERN_DEBUG "cvsfs: readdir - file %s, parent inode %lu\n", "..", inode->i_ino);
+      
       f->f_pos = 2;
+      break;
 
     default:
       /* ask cvsfs daemon to get the directory contents */
       name = cvsfs_get_file (info, buf, f->f_pos);
       if (!name)
-        return -1;	/* there are no files in this directory */
+        return -ENOENT;	/* there are no files in this directory */
 
       qname.name = name;
       qname.len = strlen (name);
@@ -117,6 +131,8 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
       if (filldir (dirent, qname.name, qname.len, f->f_pos, ino, DT_UNKNOWN) >= 0)
         ++(f->f_pos);
 	    
+      printk (KERN_DEBUG "cvsfs: readdir - file %s, parent inode %lu\n", name, inode->i_ino);
+      
       kfree (name);
   }
 
@@ -133,6 +149,45 @@ cvsfs_dir_open (struct inode * inode, struct file * file)
 
 
 
+/* create a file */
+static int cvsfs_create (struct inode * dir, struct dentry * dentry, int mode)
+{
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
+  struct cvsfs_fattr fattr;
+  struct inode       *inode;
+  char buf[512];
+
+  printk (KERN_DEBUG "cvsfs: create - mode %d\n", mode);
+
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
+    return -ENOMEM;
+
+  printk (KERN_DEBUG "cvsfs: create - name %s\n", buf);
+  
+  if (cvsfs_create_file (info, buf, mode, &fattr) < 0)
+    return -EACCES;
+
+  inode = cvsfs_iget (dir->i_sb, &fattr);
+  kfree (fattr.f_version);
+    
+  if (!inode)
+    return -EACCES;
+    
+  dentry->d_op = &cvsfs_dentry_operations;
+  dir->i_nlink++;
+  inode->i_nlink = 2;  
+
+  if (dir->i_mode & S_ISGID)
+    inode->i_mode |= S_ISGID;
+
+  d_instantiate (dentry, inode);
+
+  return 0;
+  return -EACCES;
+}
+
+
+
 /* called from kernel when searching for a file (name is in dentry) */
 static struct dentry *
 cvsfs_lookup (struct inode * dir, struct dentry * dentry)
@@ -145,26 +200,102 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return ERR_PTR (-ENOENT);
 
+  printk (KERN_DEBUG "cvsfs: lookup - search for name %s\n", buf);
+
   /* do we have the file ? */
-  if (cvsfs_get_attr (info, buf, &fattr) < 0)
+  if (cvsfs_get_attr (info, buf, &fattr) >= 0)
   {
-    return ERR_PTR (-ENOENT);
-  }
+    fattr.f_ino = iunique (dentry->d_sb, 2);
+    inode = cvsfs_iget (dir->i_sb, &fattr);
+    kfree (fattr.f_version);
 
-  fattr.f_ino = iunique (dentry->d_sb, 2);
-  inode = cvsfs_iget (dir->i_sb, &fattr);
-
-  if (inode)
-  {
+    printk (KERN_DEBUG "cvsfs: lookup - inode %lu\n", fattr.f_ino);
+      
+    if (!inode)
+      return ERR_PTR (-EACCES);
+    
     dentry->d_op = &cvsfs_dentry_operations;
 
     d_add (dentry, inode);
   }
-
-  kfree (fattr.f_version);
-
+  
   return NULL;
 }
+
+
+
+/* create a new directory */
+static int cvsfs_mkdir (struct inode * dir, struct dentry * dentry, int mode)
+{
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
+  struct cvsfs_fattr fattr;
+  struct inode       *inode;
+  char buf[512];
+
+  printk (KERN_DEBUG "cvsfs: mkdir - mode %d\n", mode);
+
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
+    return -EIO;
+
+  if (cvsfs_create_dir (info, buf, mode, &fattr) < 0)
+    return -EACCES;
+
+  inode = cvsfs_iget (dir->i_sb, &fattr);
+  kfree (fattr.f_version);
+    
+  if (!inode)
+    return -EACCES;
+    
+  dentry->d_op = &cvsfs_dentry_operations;
+  dir->i_nlink++;
+  inode->i_nlink = 2;  
+
+  if (dir->i_mode & S_ISGID)
+    inode->i_mode |= S_ISGID;
+
+  d_instantiate (dentry, inode);
+
+  return 0;
+}
+
+
+
+/* remove a directory */
+static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
+{
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
+  struct inode       *inode;
+  char buf[512];
+  int retval;
+
+  printk (KERN_DEBUG "cvsfs: rmdir\n");
+
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
+    return -EIO;
+
+  printk (KERN_DEBUG "cvsfs: rmdir - file %s\n", buf);
+
+  retval = cvsfs_remove_dir (info, buf);
+  if (retval < 0)
+    return retval;
+
+  inode = dentry->d_inode;
+  inode->i_nlink = 0;
+  inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
+  dir->i_nlink--;
+  
+  return 0;
+}
+
+
+
+/* check permission */
+//static int cvsfs_dir_permission (struct inode * dir, int mode)
+//{
+//  printk (KERN_DEBUG "cvsfs: permission - mask %d, parent inode %lu\n", mode, dir->i_ino);
+
+//  return 0;
+//}
 
 
 
@@ -211,8 +342,8 @@ cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
   int i;
 
 #ifdef __DEBUG__
-  cvsfs_get_name (dentry, buf, sizeof (buf));
-  printk (KERN_DEBUG "cvsfs: hash_dentry - file %s + ", buf);
+  cvsfs_get_name (qentry, buf, sizeof (buf));
+  printk (KERN_DEBUG "cvsfs: hash_dentry - parent %s, ", buf);
   memcpy (buf, str->name, str->len);
   buf[str->len] = '\0';
   printk (KERN_DEBUG "%s\n", buf);
@@ -234,7 +365,21 @@ cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
 static int
 cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
 {
+#ifdef __DEBUG__
+  char buf[128];
+#endif
   int i;
+
+#ifdef __DEBUG__
+  cvsfs_get_name (dentry, buf, sizeof (buf));
+  printk (KERN_DEBUG "cvsfs: compare_dentry - parent %s,", buf);
+  memcpy (buf, a->name, a->len);
+  buf[a->len] = '\0';
+  printk (KERN_DEBUG "name 1: %s, ", buf);
+  memcpy (buf, b->name, b->len);
+  buf[b->len] = '\0';
+  printk (KERN_DEBUG "name 2: %s\n", buf);
+#endif
 
   if (a->len != b->len)
     return 1;

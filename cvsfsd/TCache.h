@@ -30,6 +30,10 @@ class TCache
     virtual ~TCache ();
 
   protected:
+    bool MakeDir (const std::string &, int);
+    int RemoveDir (const std::string &);
+    bool TouchFile (const std::string &, int);
+
     std::string	fRoot;
     bool	fCleanOnExit;
 

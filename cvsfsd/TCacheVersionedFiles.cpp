@@ -28,7 +28,7 @@
 TCacheVersionedFiles::TCacheVersionedFiles (const std::string & root,
 					    const std::string & server,
 					    const std::string & cvsroot)
-: TCache (root, false), fServer (server), fCvsroot (cvsroot)
+: TCache (root + "/remote", false), fServer (server), fCvsroot (cvsroot)
 {
   if (fServer.length () == 0)
     fServer = "localhost";

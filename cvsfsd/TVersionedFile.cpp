@@ -55,7 +55,7 @@ const TFile * TVersionedFile::GetVersion (int index) const
 
 TEntry::EntryType TVersionedFile::isA () const
 {
-  return TEntry::FileEntry;
+  return TEntry::VersionedFileEntry;
 }
 
 

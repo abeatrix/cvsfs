@@ -25,6 +25,9 @@
 #include "TModuleActionAttr.h"
 #include "TModuleActionDir.h"
 #include "TModuleActionGet.h"
+#include "TModuleActionMkdir.h"
+#include "TModuleActionRmdir.h"
+#include "TModuleActionMkfile.h"
 #include "TModuleActionQuit.h"
 #include "TCvsInterfacePserver.h"
 #include "TSyslog.h"
@@ -45,7 +48,7 @@ main(int argc, char *argv[])
   char name[32];
   TSyslog *log = TSyslog::instance ("cvsfsd", TSyslog::Daemon);
 
-  log->debug.Disable ();	// disable debug logging
+//  log->debug.Disable ();	// disable debug logging
 
   program_version ();
 
@@ -136,6 +139,9 @@ main(int argc, char *argv[])
     server->AddAction ("ls", new TModuleActionDir);
     server->AddAction ("attr", new TModuleActionAttr);
     server->AddAction ("get", new TModuleActionGet);
+    server->AddAction ("mkdir", new TModuleActionMkdir);
+    server->AddAction ("rmdir", new TModuleActionRmdir);
+    server->AddAction ("mkfile", new TModuleActionMkfile);
 
     log->info << "Starting mount daemon (" << argv[1] << ") ..." << std::endl;
 

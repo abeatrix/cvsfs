@@ -45,7 +45,13 @@ TModuleServer::TModuleServer ()
 TModuleServer::TModuleServer (const std::string & device)
 : fDevice (device), fInitSequence (true)
 {
+  TSyslog *log = TSyslog::instance ();
+
   fInDeviceFile = fopen (device.c_str (), "r+");
+  if (!fInDeviceFile)
+    log->error << "TModuleServer: open " << device << " failed - error "
+	       << errno << " (" << strerror (errno) << ")" << std::endl;
+
   fOutDeviceFile = fInDeviceFile;
   
   init ();
