@@ -1,3 +1,8 @@
+2001-11-24  Johan Rydberg  <johan@rydberg.com>
+
+	* cvsfs/Makefile.am (noinst_HEADERS): Headers.
+	* cvsfs/Makefile.in: Regenerate.
+
 2001-11-22  Petric Frank  <pfrank@gmx.de>
         * cache.c: reorganized cache strategy. Split getting of files.
 	* cache.h: structure cvsfs_dirlist_node gets new field has_full_data.
