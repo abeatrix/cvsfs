@@ -19,10 +19,10 @@
 #define __TSYSLOGSTREAMBUF_H__
 
 #include <string>
-#ifdef HAVE_STREAMBUF
-#include <streambuf>
-#else
+#ifdef HAVE_STREAMBUF_H
 #include <streambuf.h>
+#else
+#include <streambuf>
 #endif
 
 // forward reference
