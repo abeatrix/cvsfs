@@ -4,12 +4,14 @@
 # Date:   May 24th, 2001
 
 OBJECT_FILES =	cvsfs_init.o \
+		commands.o \
 		dir.o \
 		file.o \
 		cache.o \
 		inode.o \
-		proc.o
-		
+		proc.o \
+		socket.o
+			
 RESULT_FILE =	cvsfs.o
 
 
@@ -28,7 +30,7 @@ LDFLAGS = -m elf_i386 -r
 all:		$(RESULT_FILE)
 
 
-$(RESULT_FILE):	$(OBJECT_FILES)
+$(RESULT_FILE):	$(OBJECT_FILES) cvsfs_config.h
 	$(LD) $(LDFLAGS) -o $@ $(OBJECT_FILES)
 
 

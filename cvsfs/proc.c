@@ -21,20 +21,18 @@
 #include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/sched.h>
-#include <linux/net.h>
 #include <linux/string.h>
 #include <linux/ctype.h>
 
-#include <net/scm.h>
 #include <net/ip.h>
 
-#include <asm/uaccess.h>
+//#include <asm/uaccess.h>	// provide get_fs, set_fs functions
 
 #include "inode.h"
 #include "cache.h"
+#include "socket.h"
+#include "commands.h"
 
-#define CVSFS_MAX_LINE	512
 
 
 static unsigned char shifts[] = {
@@ -141,7 +139,7 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
   info->address.sin_addr.s_addr = cvsfs_inet_addr ("127.0.0.1");
   info->address.sin_port = htons (2401);
   strcpy (info->user, "anonymous");
-  strcpy (info->pass, "");
+  strcpy (info->pass, "A");
   strcpy (info->mnt.root, "/cvsroot");
   *(info->mnt.project) = '\0';
 
@@ -160,7 +158,12 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
           strncpy (info->user, &p[5], sizeof (info->user) - 1);
         else
           if (strncmp (p, "password=", 9) == 0)
-            strncpy (info->pass, &p[9], sizeof (info->pass) - 1);
+	  {
+	    char password[CVSFS_MAX_PASS + 1];
+	    
+            strncpy (password, &p[9], sizeof (info->pass) - 1);
+            cvsfs_password_scramble (password, info->pass);
+	  }
           else
             if (strncmp (p, "cvsroot=", 8) == 0)
               strncpy (info->mnt.root, &p[8], sizeof (info->mnt.root) - 1);
@@ -173,444 +176,12 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
 
 
 
-int sock_send (struct socket * sock, const void * buf, int len)
-{
-  struct iovec iov;
-  struct msghdr msg;
-  struct scm_cookie scm;
-  int err;
-  mm_segment_t fs;
-
-  fs = get_fs ();
-  set_fs (get_ds ());
-
-  msg.msg_name = NULL;
-  msg.msg_namelen = 0;
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = NULL;
-  msg.msg_controllen = 0;
-  msg.msg_flags = 0;
-
-  iov.iov_base = (void *) buf;
-  iov.iov_len = len;
-
-  err = scm_send (sock, &msg, &scm);
-
-  if (err >= 0)
-  {
-    err = sock->ops->sendmsg (sock, &msg, len, &scm);
-
-    scm_destroy (&scm);
-  }
-
-  set_fs (fs);
-
-  return err;
-}
-
-
-
-int sock_recv (struct socket * sock, unsigned char * buf, int size, unsigned flags)
-{
-  struct iovec iov;
-  struct msghdr msg;
-  struct scm_cookie scm;
-  mm_segment_t fs;
-
-  fs = get_fs ();
-  set_fs (get_ds ());
-
-  msg.msg_name = NULL;
-  msg.msg_namelen = 0;
-  msg.msg_iov = &iov;
-  msg.msg_iovlen = 1;
-  msg.msg_control = NULL;
-  msg.msg_controllen = 0;
-
-  iov.iov_base = buf;
-  iov.iov_len = size;
-
-  memset (&scm, 0, sizeof (scm));
-
-  size = sock->ops->recvmsg (sock, &msg, size, flags, &scm);
-
-  if (size >= 0)
-    scm_recv (sock, &msg, &scm, flags);
-
-  set_fs (fs);
-
-  return size == -EAGAIN ? 0 : size;
-}
-
-
-
-int cvsfs_readline (struct socket * sock, char * buf, int len)
-{
-  int i = 0;
-  int out = 0;
-  int count = 10;             /* up to 10 retries */
-  int size;
-  unsigned char *ptr;
-
-  ptr = (unsigned char *) buf;
-  do
-  {
-    size = sock_recv (sock, ptr, 1, MSG_PEEK | MSG_DONTWAIT);
-
-    if (size >= 0)
-    {
-      if (size > 0)
-      {
-        sock_recv (sock, ptr, 1, 0);
-
-        if ((*ptr == '\012') || (*ptr == '\015'))
-	{
-	  *ptr = '\0';
-          out = 1;
-        }
-        ++i;
-        ++ptr;
-        count = 10;
-      }
-      else
-      {
-        long wait = jiffies + (HZ/20) * (11 - count);
-        for (;time_before (jiffies, wait);)
-          schedule ();
-      }
-    }
-    else
-    {
-      *ptr = 0;
-
-      return -1;
-    }
-
-    --count;
-  } while ((i < len) && (out == 0) && (count > 0));
-
-  *ptr = 0;
-
-  return i;
-}
-
-
-
-int cvsfs_long_readline (struct socket * sock, char * buf, int len)
-{
-  int count;
-  int ret;
-  long wait;
-  
-  count = 40;
-  
-  if ((ret = cvsfs_readline (sock, buf, len)) < 0)
-    return ret;
-    
-  while (ret == 0)
-  {
-    --count;
-    
-    wait = jiffies + (HZ/4);
-    for (;time_before (jiffies, wait);)
-      schedule ();
-    
-    if (count == 0)
-      return -1;
-      
-    ret = cvsfs_readline (sock, buf, len);
-  }
-  
-  return ret;
-}
-
-
-
-int cvsfs_execute (struct socket * sock, char * cmd)
-{
-  printk (KERN_DEBUG "cvsfs: cvsfs_execute - command: '%s'\n", cmd);
-
-  if (sock_send (sock, cmd, strlen (cmd)) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_execute - send error !\n");
-
-    return -1;
-  }
-
-  if (sock_send (sock, "\012", 1) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_execute - send error (newline) !\n");
-
-    return -1;
-  }
-
-  return 0;
-}
-
-
-
-int cvsfs_execute_command (struct socket * sock, ...)
-{
-  va_list args;
-  char *value;
-  
-  va_start (args, sock);
-
-  value = va_arg (args, char *);
-  while (value != NULL)
-  {
-    if (sock_send (sock, value, strlen (value)) < 0)
-    {
-      printk (KERN_DEBUG "cvsfs: cvsfs_execute_command - send error for: %s\n", value);
-
-      return -1;
-    }
-
-    value = va_arg (args, char *);
-  }
-
-  va_end (args);
-  
-  if (sock_send (sock, "\012", 1) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_execute_command - send error (newline) !\n");
-
-    return -1;
-  }
-  
-  return 0;
-}
-
-
-
-int cvsfs_login (struct socket * sock, struct cvsfs_sb_info * info, int test)
-{
-  char buf[CVSFS_MAX_LINE];
-  char scrambled[CVSFS_MAX_PASS + 1];
-  int i;
-
-  printk (KERN_DEBUG "cvsfs: cvsfs_login\n");
-
-  if (test == 0)
-  {
-    if (cvsfs_execute (sock, "BEGIN AUTH REQUEST") < 0)
-      return -1;
-  }
-  else
-  {
-    if (cvsfs_execute (sock, "BEGIN VERIFICATION REQUEST") < 0)
-      return -1;
-  }
-
-  if (cvsfs_execute (sock, info->mnt.root) < 0)
-    return -1;
-
-  if (cvsfs_execute (sock, info->user) < 0)
-    return -1;
-
-  cvsfs_password_scramble (info->pass, scrambled);
-  if (cvsfs_execute (sock, scrambled) < 0)
-    return -1;
-
-  if (test == 0)
-  {
-    if (cvsfs_execute (sock, "END AUTH REQUEST") < 0)
-      return -1;
-  }
-  else
-  {
-    if (cvsfs_execute (sock, "END VERIFICATION REQUEST") < 0)
-      return -1;
-  }
-
-  i = cvsfs_readline (sock, buf, CVSFS_MAX_LINE);
-  if (i < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_login - no response !\n");
-
-    return -1;
-  }
-
-  if (strncmp (buf, "I LOVE YOU", 10) != 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_login - response '%s' (failure) !\n", buf);
-
-    return -1;
-  }
-
-  return 0;
-}
-
-
-
-int cvsfs_connect (struct socket **sockptr, struct cvsfs_sb_info * info, int test)
-{
-  struct sockaddr_in address;
-/*  struct timeval tv; */
-/*  mm_segment_t fs; */
-
-  info->address.sin_family = AF_INET;
-
-  printk (KERN_DEBUG "cvsfs: cvsfs_connect\n");
-
-  if (*sockptr)
-    cvsfs_disconnect (sockptr, info);
-
-  if (sock_create (AF_INET, SOCK_STREAM, 0, sockptr) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_connect - create socket failed !\n");
-
-    return -1;
-  }
-
-  address = info->address;
-  if ((*sockptr)->ops->connect (*sockptr, (struct sockaddr *) &address, sizeof (address), 0) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_connect - connect failed !\n");
-
-    return -1;
-  }
-
-  /* Setting of timeout is not working - i don't know why */
-  /* so i have to use a busy-wait when reading data - bad */
-/*  fs = get_fs (); */
-/*  set_fs (get_ds ()); */
-
-  /* set a read timeot of 5 seconds */
-/*  tv.tv_sec = 5; */
-/*  tv.tv_usec = 0; */
-  
-/*  info->sock->ops->setsockopt (info->sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof (tv)); */
-
-/*  set_fs (fs); */
-
-  if (cvsfs_login (*sockptr, info, test) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_connect - login failed !\n");
-
-    return -1;
-  }
-
-//  if (cvsfs_execute (info, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M Mbinary E F MT") < 0)
-//  {
-//    printk (KERN_DEBUG "cvsfs: cvsfs_login - 'Valid-responses' failed !\n");
-
-//    return -1;
-//  }
-
-  if (test != 0)
-  {
-    sock_release (*sockptr);
-
-    *sockptr = NULL;
-  }
-
-  return 0;
-}
-
-
-
-void cvsfs_disconnect (struct socket **sockptr, struct cvsfs_sb_info * info)
-{
-  printk (KERN_DEBUG "cvsfs: cvsfs_disconnect\n");
-
-  if (sockptr && (*sockptr))
-  {
-    sock_release (*sockptr);
-    
-    *sockptr = NULL;
-  }
-}
-
-
-
-int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info, char * dir, char * name)
-{
-  if (cvsfs_execute_command (sock, "Root ", info->mnt.root, NULL) < 0)
-    return -1;
-
-  if (cvsfs_execute (sock, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template  Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M  Mbinary E F MT") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'Valid-responses' failed !\n");
-
-    return -1;
-  }
-
-  if (cvsfs_execute (sock, "Argument -N") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'Argument -N' failed !\n");
-
-    return -1;
-  }
-
-  if (cvsfs_execute_command (sock, "Argument ", dir, "/", name, NULL) < 0)
-    return -1;
-
-  if (cvsfs_execute (sock, "Directory .") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'Directory .' failed !\n");
-
-    return -1;
-  }
-
-  if (cvsfs_execute (sock, info->mnt.root) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - '%s' failed !\n", info->mnt.root);
-
-    return -1;
-  }
-
-  if (cvsfs_execute (sock, "co") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'co' failed !\n");
-
-    return -1;
-  }
-  
-  return 0;
-}
-
-
-
-int cvsfs_getIP (char * buf, unsigned * ip, unsigned short * port)
-{
-  char *b;
-  int i;
-
-  *ip = *port = 0;
-
-  buf = strchr (buf, '(') + 1;
-  if (!buf)
-    return -1;
-
-  for (i = 0; i < 4; ++i)
-  {
-    b = buf;
-    *ip = (*ip >> 8) + (simple_strtoul (b, &b, 0) << 24);
-    buf = strchr (buf, ',') + 1;
-  }
-
-  b = buf;
-  *port = simple_strtoul (b, &b, 0) << 8;
-  buf = strchr (buf, ',') + 1;
-  b = buf;
-  *port = htons (*port + simple_strtoul (b, &b, 0));
-
-  return 0;
-}
-
-
-
 int cvsfs_get_fname (char * s, char * d)
 {
   static char *prefix = "M File ";
   static char *revision = " is new; current revision ";
   static char *dir = "E cvs server: Diffing ";
   int ret = -1;
-
-  printk (KERN_DEBUG "cvsfs: cvsfs_get_fname - line: '%s'\n", s);
-
 
   if (strncmp (s, prefix, strlen (prefix)) == 0)
   {
@@ -653,8 +224,6 @@ int cvsfs_get_fname (char * s, char * d)
       ret = 0;
     }
 
-  printk (KERN_DEBUG "cvsfs: cvsfs_get_fname - rc = %d, '%s'\n", ret, d);
-
   return ret;
 }
 
@@ -662,9 +231,19 @@ int cvsfs_get_fname (char * s, char * d)
 
 int cvsfs_convert_month (char *ptr, char **newptr)
 {
-  *newptr = &ptr[3];
+  static char *monthNames[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+  int loop;
   
-  return 11;  // fixed: November
+  *newptr = &ptr[3];
+
+  for (loop = 12; loop > 0; loop--)
+    if (strncmp (ptr, monthNames[loop - 1], 3) == 0)
+      return loop;
+  
+  printk (KERN_DEBUG "cvsfs: cvsfs_convert_month - invalid month name %s\n", ptr);
+  
+  return 1;  // no valid month string - return dummy: January
 }
 
 
@@ -713,7 +292,7 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
   
   printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr '%s %s'\n", dir, entry->name);
   
-  if (cvsfs_connect (&sock, info, 0) < 0)
+  if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - connect failed !\n");
 
@@ -722,7 +301,7 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
 
   if (cvsfs_command_sequence_co (sock, info, dir, entry->name) < 0)
   {
-    cvsfs_disconnect (&sock, info);
+    cvsfs_disconnect (&sock);
 
     return -1;
   }
@@ -732,20 +311,18 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - line read : %s\n", line);
 
-    cvsfs_disconnect (&sock, info);
+    cvsfs_disconnect (&sock);
 
     return -1;
   }
   
   while (strcmp (line, "ok") != 0)
   {
-//    printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - handle string '%s'\n", line);
-    
     if (strncmp (line, "error", 5) == 0)
     {
       printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - error while reading file\n");
 
-      cvsfs_disconnect (&sock, info);
+      cvsfs_disconnect (&sock);
 
       return -1;
     }
@@ -771,13 +348,13 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
     {
       printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - no response !\n");
 
-      cvsfs_disconnect (&sock, info);
+      cvsfs_disconnect (&sock);
 
       return -1;
     }
   }
   
-  cvsfs_disconnect (&sock, info);
+  cvsfs_disconnect (&sock);
 
   return 0;
 }
@@ -808,76 +385,18 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
     --len;
   }
 
-  if (cvsfs_connect (&sock, info, 0) < 0)
+  if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - connect failed !\n");
 
     return -1;
   }
 
-  strcpy (res, "Root ");
-  strcat (res, info->mnt.root);
-
-  if (cvsfs_execute (sock, res) < 0)
+  if (cvsfs_command_sequence_rdiff (sock, info, basedir) < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - '%s' failed !\n", res);
+    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - rdiff command failed !\n");
 
-    cvsfs_disconnect (&sock, info);
-
-    return -1;
-  }
-
-//  if (cvsfs_execute (info, "UseUnchanged") < 0)
-//  {
-//    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - 'UseUnchanged' failed !\n");
-
-//    return -1;
-//  }
-
-  if (cvsfs_execute (sock, "Argument -s") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - 'Argument -s' failed !\n");
-
-    cvsfs_disconnect (&sock, info);
-
-    return -1;
-  }
-
-  if (cvsfs_execute (sock, "Argument -r") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - 'Argument -r' failed !\n");
-
-    cvsfs_disconnect (&sock, info);
-
-    return -1;
-  }
-
-  if (cvsfs_execute (sock, "Argument 0") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - 'Argument 0' failed !\n");
-
-    cvsfs_disconnect (&sock, info);
-
-    return -1;
-  }
-  
-  strcpy (res, "Argument ");
-  strcat (res, basedir);
-
-  if (cvsfs_execute (sock, res) < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - '%s' failed !\n", res);
-
-    cvsfs_disconnect (&sock, info);
-
-    return -1;
-  }
-
-  if (cvsfs_execute (sock, "rdiff") < 0)
-  {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - 'rdiff' failed !\n");
-
-    cvsfs_disconnect (&sock, info);
+    cvsfs_disconnect (&sock);
 
     return -1;
   }
@@ -887,20 +406,18 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - no response !\n");
 
-    cvsfs_disconnect (&sock, info);
+    cvsfs_disconnect (&sock);
 
     return -1;
   }
 
   while (strcmp (line, "ok") != 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - handle string '%s'\n", line);
-    
     if (strncmp (line, "error", 5) == 0)
     {
       printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - error while reading directory\n");
 
-      cvsfs_disconnect (&sock, info);
+      cvsfs_disconnect (&sock);
 
       return -1;
     }
@@ -959,13 +476,13 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
     {
       printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - no response !\n");
 
-      cvsfs_disconnect (&sock, info);
+      cvsfs_disconnect (&sock);
 
       return -1;
     }
   }
 
-  cvsfs_disconnect (&sock, info);
+  cvsfs_disconnect (&sock);
 
   return 0;
 }
@@ -1061,67 +578,6 @@ int cvsfs_get_attr (struct dentry * dentry, struct cvsfs_fattr * fattr, struct c
 
 
 
-int cvsfs_read_raw_data (struct socket * sock, unsigned long count, char * buffer)
-{
-  int i = 0;
-  int retries = 10;             /* up to 10 retries */
-  int size;
-  char data;
-  unsigned char *ptr;
-
-  if (count == 0)
-    return 0;
-
-  if (buffer == NULL)
-  {
-    ptr = &data;
-  }
-  else
-  {
-    ptr = (unsigned char *) buffer;
-  }
-      
-  do
-  {
-    size = sock_recv (sock, ptr, 1, MSG_PEEK | MSG_DONTWAIT);
-
-    if (size >= 0)
-    {
-      if (size > 0)
-      {
-        sock_recv (sock, ptr, 1, 0);
-
-        ++i;
-	if (buffer != NULL)
-          ++ptr;
-	  
-        retries = 10;
-      }
-      else
-      {
-        long wait = jiffies + (HZ/20) * (11 - retries);
-        for (;time_before (jiffies, wait);)
-          schedule ();
-      }
-    }
-    else
-    {
-      *ptr = 0;
-
-      return -1;
-    }
-
-    --retries;
-    if (retries == 0)
-      return -1;
-      
-  } while (i < count);
-
-  return i;
-}
-
-
-
 int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long count, char * buffer)
 {
   struct inode *inode = dentry->d_inode;
@@ -1140,7 +596,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   
   printk (KERN_DEBUG "cvsfs: cvsfs_read '%s %s'\n", info->mnt.project, line);
   
-  if (cvsfs_connect (&sock, info, 0) < 0)
+  if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_read - connect failed !\n");
 
@@ -1149,7 +605,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
 
   if (cvsfs_command_sequence_co (sock, info, info->mnt.project, &line[1]) < 0)
   {
-    cvsfs_disconnect (&sock, info);
+    cvsfs_disconnect (&sock);
 
     return 0;
   }
@@ -1159,7 +615,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_read - line read : %s\n", line);
 
-    cvsfs_disconnect (&sock, info);
+    cvsfs_disconnect (&sock);
 
     return 0;
   }
@@ -1172,7 +628,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
     {
       printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - error while reading file\n");
 
-      cvsfs_disconnect (&sock, info);
+      cvsfs_disconnect (&sock);
 
       return 0;
     }
@@ -1190,7 +646,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
         {
           printk (KERN_DEBUG "cvsfs: cvsfs_read - low read !\n");
 
-          cvsfs_disconnect (&sock, info);
+          cvsfs_disconnect (&sock);
 
           return 0;
         }
@@ -1209,13 +665,13 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
     {
       printk (KERN_DEBUG "cvsfs: cvsfs_read - no response !\n");
 
-      cvsfs_disconnect (&sock, info);
+      cvsfs_disconnect (&sock);
 
       return 0;
     }
   }
   
-  cvsfs_disconnect (&sock, info);
+  cvsfs_disconnect (&sock);
 
   cvsfs_unlock (info);
 

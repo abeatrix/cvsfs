@@ -4,3 +4,7 @@
 2001/11/07:
 * retrieves file size and date
 * ability to read files
+
+2001/11/08:
+* Bufix: Month not calculated properly
+* Code cleanups

@@ -24,6 +24,7 @@
 #include <linux/malloc.h>
 #include <linux/smp_lock.h>
 
+#include "socket.h"
 #include "dir.h"
 #include "file.h"
 #include "cache.h"
@@ -168,7 +169,7 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
   {
     sock = NULL;
       
-    if (cvsfs_connect (&sock, info, 1) < 0)
+    if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 1) < 0)
       printk (KERN_ERR "cvsfs read_super: could not connect to %u.%u.%u.%u\n",
               info->address.sin_addr.s_addr & 0xff,
               (info->address.sin_addr.s_addr >> 8) & 0xff,

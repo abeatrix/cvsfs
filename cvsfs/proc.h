@@ -31,8 +31,6 @@ struct cvsfs_directory;
 
 void cvsfs_init_root_dirent (struct cvsfs_sb_info *, struct cvsfs_fattr *);
 int cvsfs_parse_options (struct cvsfs_sb_info *, void *);
-int cvsfs_connect (struct socket **, struct cvsfs_sb_info *, int);
-void cvsfs_disconnect (struct socket **, struct cvsfs_sb_info *);
 inline void cvsfs_lock (struct cvsfs_sb_info *);
 inline void cvsfs_unlock (struct cvsfs_sb_info *);
 int cvsfs_loaddir (struct cvsfs_sb_info *, char *, struct cvsfs_directory *);
