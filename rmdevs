@@ -1,0 +1,12 @@
+#! /bin/sh
+#
+# Remove device nodes required by cvsfs
+#
+# This script have only to be executed if the device file system (devfsd)
+# is not in use !
+#
+# Execute the script as root
+#
+if [ -e "/dev/cvsfs/0" ]; then
+    rm -rf /dev/cvsfs
+fi
