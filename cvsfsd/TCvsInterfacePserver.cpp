@@ -339,6 +339,7 @@ int TCvsInterfacePserver::RemoveFile (const std::string & path,
   if (!fCacheManager.DeleteFile (entry->GetLayer (), fullpath))
     return ENOENT;
 
+  // remove the file from directory listing
   dir->RemoveEntry (entry);
 
   // has the deleted file hidden a remote version ?
@@ -571,13 +572,13 @@ int TCvsInterfacePserver::GetLocation (const std::string & path,
     return ENOENT;
 
   if (entry->GetLayer () == fLocal->GetLayer ())
-    location = "";
+    location = "view private";
   else
     if (entry->GetLayer () == fCheckedOut->GetLayer ())
     {
       TFile *f = static_cast<TFile *> (entry);
 
-      location = "Checked out from ";
+      location = "checked out from ";
       location += f->GetVersion ();
     }
     else
@@ -598,6 +599,121 @@ int TCvsInterfacePserver::GetLocation (const std::string & path,
 int TCvsInterfacePserver::Checkout (const std::string & path,
 				    const std::string & version)
 {
+  if (!LoadTree ())
+    return EIO;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  std::string filename;
+
+  TDirectory *dir = GetParentDirectory (fullpath, filename);
+  if (!dir)
+    return EIO;
+
+  TEntry *entry = dir->FindEntry (filename);
+  if (!entry)
+    return ENOENT;
+
+  if (entry->isA () == TEntry::DirEntry)
+    return EISDIR;
+
+  bool LocalVersionFound = entry->GetLayer () != fRemote->GetLayer ();
+
+  // exists a local or checked-out version of this file ?
+  if (LocalVersionFound)
+  {
+    // first delete the writeable version
+    fCacheManager.DeleteFile (entry->GetLayer (), fullpath);
+
+    dir->RemoveEntry (entry);
+
+    // obtain info from CVS dir tree
+    entry = FindEntry (&fCvsDir, fullpath);
+    if (!entry)
+      return EIO;
+  }
+
+  // now we have the CVS entry in 'entry'
+  TVersionedFile *file = static_cast<TVersionedFile *> (entry);
+
+  // load the file of the specified version from remote if necessary
+  const TFile *loadedFile = LoadFile (fullpath, version, *file);
+  if (loadedFile == NULL)
+    return EIO;
+
+  // allocate the file in the checkout cache (with size = 0)
+  std::string versionedpath = fullpath + "@@" + loadedFile->GetVersion ();
+
+  if (!fCheckedOut->CreateFile (versionedpath, loadedFile->GetData ().GetAttribute ()))
+    return EIO;
+
+  // copy the file contents from CVS cache to 'checked-out space'
+  std::ostream * fout = fCheckedOut->Out (versionedpath, std::ios::binary);
+  if (!fout)		// can not open file ?
+  {
+    delete fout;
+
+    return ENOENT;
+  }
+
+  std::istream * fin = fRemote->In (versionedpath, std::ios::binary);
+  if (!fin)		// can not open file ?
+  {
+    delete fout;
+    delete fin;
+
+    return ENOENT;
+  }
+
+  char buffer[4096];
+  int count;
+
+  fin->read (buffer, 4096);
+
+  while ((count = fin->gcount ()) > 0)
+  {
+    fout->write (buffer, count);
+    fin->read (buffer, 4096);
+  }
+
+  delete fout;
+  delete fin;
+
+  // directory cache management
+  TFile *newfile = new TFile (*loadedFile);
+  if (!newfile)
+    return ENOMEM;
+
+  // obtain the new file attributes
+  TFileData dummy;
+
+  if (!fCheckedOut->FileAttribute (fullpath, dummy))
+  {
+    delete newfile;
+
+    return EIO;
+  }
+
+  newfile->SetData (dummy);
+  newfile->ResetReadOnly ();	/* is now writeable */
+
+  // remove the old directory entry
+  if (!LocalVersionFound)
+    dir->RemoveEntry (entry);
+
+  // add the new entry
+  newfile->SetLayer (fCheckedOut->GetLayer ());
+
+  dir->AddEntry (newfile);
+
   return 0;
 }
 
@@ -1146,6 +1262,7 @@ const TFile * TCvsInterfacePserver::LoadFile (const std::string & path,
   bool obtainFile = false;
 
   const TFile *item = file.FindVersion (realversion);
+
   if (!item)
     obtainFile = true;
   else

@@ -172,6 +172,7 @@ int TModuleServer::read (char *buf, int bufsize, int count)
     ptr = buf;
     bytesread = 0;
     item = fgetc (fInDeviceFile);
+
     while ((item != EOF) && (count > bytesread))
     {
       *ptr = item;
@@ -239,7 +240,7 @@ int TModuleServer::readItem (char *buf, int max)
       
     item =  fgetc (fInDeviceFile);
   }
-    
+
   *ptr = '\0';
     
   return count;
