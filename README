@@ -95,10 +95,10 @@ Solution 2: Update to a more recent kernel version.
 Problem: when starting cvsfsd it aborts with following message:      
 
   $ /etc/init.d/cvsfsd start
-    Starting cvs virtual filesystem daemon:/lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o: unresolved symbol __wake_up_sync
-    /lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o: insmod /lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o failed
-    /lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o: insmod cvsfs failed
-    startproc: cannot stat /var/tmp/cvsfs-buildroot/usr/sbin/cvsfsd: No such file or directory
+    Starting cvs virtual filesystem daemon:
+    /lib/modules/<kernel>/kernel/fs/cvsfs/cvsfs.o: unresolved symbol __wake_up_sync
+    /lib/modules/<kernel>/kernel/fs/cvsfs/cvsfs.o: insmod /lib/modules/<kernel>/kernel/fs/cvsfs/cvsfs.o failed
+    /lib/modules/<kernel>/kernel/fs/cvsfs/cvsfs.o: insmod cvsfs failed
 
 Solution: same as before.
 
