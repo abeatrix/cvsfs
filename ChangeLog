@@ -1,3 +1,14 @@
+2002-08-21  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/dir.c: add support for create (file)
+	* cvsfs/proc.c (cvsfs_create_file): new - send 'mkfile to daemon
+	* cvsfsd/TModuleActionMkfile.cpp: new - daemon interface for 'mkfile'
+	* cvsfsd: implement mkfile functionality for local files
+
+2002-08-20  Volker Moell  <volker@die-moells.de>
+	* all: introduce support of RPM generation in configure/Makefile
+	  configure now creates a valid cvsfs.spec file to be used in a
+	  subsequent rpm execution
+
 2002-08-20  Petric Frank  <pfrank@gmx.de>
 	* cvsfsd/TCvsInterfacePserver (AllocateDir): size was short by one
 	* Bugfix release 1.1.1 which fixes only the bug above.

@@ -71,8 +71,38 @@ it (as root):
 
 To automate this you have to create symlinks in the different runlevel
 directories to /etc/init.d/cvsfsd using (for example) a runlevel editor.
-  
 
+
+Possible problems:
+------------------
+
+Problem: at 'make install' the following message comes out:
+
+  $ depmod -a  
+    depmod: *** Unresolved symbols in /lib/modules/<kernel version>/kernel/fs/cvsfs/cvsfs.o
+
+  Check file /usr/src/linux/kernel/ksyms.c. There must be a line
+  
+    EXPORT_SYMBOL(__wake_up_sync);
+    
+  A kernel >= 2.4.10 must be used. It is also reported that kernel version
+  2.4.19-ac4 has also a problem with that.
+    
+Solution 1: If missing - add it and recompile the kernel.
+Solution 2: Update to a more recent kernel version.
+
+
+Problem: when starting cvsfsd it aborts with following message:      
+
+  $ /etc/init.d/cvsfsd start
+    Starting cvs virtual filesystem daemon:/lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o: unresolved symbol __wake_up_sync
+    /lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o: insmod /lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o failed
+    /lib/modules/2.4.19-ac4/kernel/fs/cvsfs/cvsfs.o: insmod cvsfs failed
+    startproc: cannot stat /var/tmp/cvsfs-buildroot/usr/sbin/cvsfsd: No such file or directory
+
+Solution: same as before.
+
+	       
 Usage (for root users):
 -----------------------
 
