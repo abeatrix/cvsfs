@@ -27,7 +27,7 @@
 #include "TModuleServer.h"
 #include "TCvsInterface.h"
 #include "TSyslog.h"
-#include "../../cvsfs.daemon/include/cvsfs_ioctl.h"
+#include "../include/cvsfs_ioctl.h"
 
 
 
