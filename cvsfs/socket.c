@@ -247,8 +247,9 @@ int cvsfs_long_readline (struct socket * sock, char * buf, int len)
 
 int cvsfs_execute (struct socket * sock, char * cmd)
 {
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_execute - command: '%s'\n", cmd);
-
+#endif
   if (sock_send (sock, cmd, strlen (cmd)) < 0)
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_execute - send error !\n");
@@ -306,9 +307,9 @@ int cvsfs_login (struct socket * sock, char * user, char * password, char * root
 {
   char buf[CVSFS_MAX_LINE];
   int i;
-
+#ifdef __DEBUG
   printk (KERN_DEBUG "cvsfs: cvsfs_login\n");
-
+#endif
   if (test == 0)
   {
     if (cvsfs_execute (sock, "BEGIN AUTH REQUEST") < 0)
@@ -384,9 +385,9 @@ int cvsfs_connect (struct socket **sockptr, char * user, char * password, char *
 /*  mm_segment_t fs; */
 
 //  address->sin_family = AF_INET;
-
+#ifdef __DEBUG
   printk (KERN_DEBUG "cvsfs: cvsfs_connect\n");
-
+#endif
   if (*sockptr)
     cvsfs_disconnect (sockptr);
 
@@ -447,8 +448,9 @@ int cvsfs_connect (struct socket **sockptr, char * user, char * password, char *
 
 void cvsfs_disconnect (struct socket **sockptr)
 {
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_disconnect\n");
-
+#endif
   if (sockptr && (*sockptr))
   {
     sock_release (*sockptr);

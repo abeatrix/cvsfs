@@ -32,7 +32,7 @@
 
 
 
-int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info, char * dir, char * name)
+int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info, char * dir, char * name, char * version)
 {
   if (cvsfs_execute (sock, "Argument -N") < 0)
   {
@@ -41,6 +41,30 @@ int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info
     return -1;
   }
 
+  if (version != NULL)
+  {
+    if (cvsfs_execute (sock, "Argument -P") < 0)
+    {
+      printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'Argument -P' failed !\n");
+
+      return -1;
+    }
+
+    if (cvsfs_execute (sock, "Argument -r") < 0)
+    {
+      printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'Argument -r' failed !\n");
+
+      return -1;
+    }
+
+    if (cvsfs_execute_command (sock, "Argument ", version, NULL) < 0)
+    {
+      printk (KERN_DEBUG "cvsfs: cvsfs_command_sequence_co - 'Argument %s' failed !\n", version);
+
+      return -1;
+    }
+  }
+  
   if (cvsfs_execute_command (sock, "Argument ", dir, "/", name, NULL) < 0)
     return -1;
 

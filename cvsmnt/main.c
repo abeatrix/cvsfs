@@ -223,6 +223,8 @@ int main(int argc, char *argv[])
     help ();
     return -1;
   }
+
+  add_option (&data, "mount", mount_point);
   
   flags = 0xC0ED0000; /* MS_MGC_VAL */
   
@@ -279,6 +281,10 @@ int main(int argc, char *argv[])
     fprintf (stderr, "Can't remove "MOUNTED"~");
     return 1;
   }
+
+  /* cleanup allocated space */
+  free (mount_point);
+  free (data);
   
   return EXIT_SUCCESS;
 }

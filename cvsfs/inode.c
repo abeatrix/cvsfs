@@ -29,22 +29,26 @@
 #include "file.h"
 #include "cache.h"
 #include "proc.h"
+#include "procfs.h"
 
 #define CVSFS_SUPER_MAGIC	0xED79ED79
 #define CVSFS_ROOT_INODE	1
+
 
 
 /* forward references - super operations */
 static void cvsfs_delete_inode (struct inode *);
 static void cvsfs_put_super (struct super_block *);
 static int cvsfs_statfs (struct super_block *, struct statfs *);
+static void cvsfs_clear_inode (struct inode *);
 
 struct super_operations cvsfs_sops = {
-					      put_inode:	force_delete,
-					      delete_inode:	cvsfs_delete_inode,
-					      put_super:	cvsfs_put_super,
-					      statfs:		cvsfs_statfs,
-					    };
+					put_inode:	force_delete,
+					delete_inode:	cvsfs_delete_inode,
+					put_super:	cvsfs_put_super,
+					statfs:		cvsfs_statfs,
+					clear_inode:	cvsfs_clear_inode,
+				     };
 
 
 
@@ -55,11 +59,11 @@ static int cvsfs_prepare_write (struct file *, struct page *, unsigned, unsigned
 static int cvsfs_commit_write (struct file *, struct page *, unsigned, unsigned);
 					    					    					
 struct address_space_operations cvsfs_aops = {
-						      readpage:		cvsfs_readpage,
-						      writepage:	cvsfs_writepage,
-						      prepare_write:	cvsfs_prepare_write,
-						      commit_write:	cvsfs_commit_write,
-						    };
+						readpage:	cvsfs_readpage,
+						writepage:	cvsfs_writepage,
+						prepare_write:	cvsfs_prepare_write,
+						commit_write:	cvsfs_commit_write,
+					     };
 */
 
 /* local forward references */
@@ -70,9 +74,9 @@ static void cvsfs_set_inode_attr (struct inode *, struct cvsfs_fattr *);
 struct inode * cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
 {
   struct inode *inode = new_inode (sb);
-
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_iget\n");
-
+#endif
   if (!inode)
     return NULL;
 
@@ -110,6 +114,8 @@ struct inode * cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
 
 static void cvsfs_set_inode_attr (struct inode *dest, struct cvsfs_fattr *src)
 {
+  struct cvsfs_versioninfo *info;
+
   dest->i_mode		= src->f_mode;
   dest->i_nlink		= src->f_nlink;
   dest->i_uid		= src->f_uid;
@@ -121,6 +127,28 @@ static void cvsfs_set_inode_attr (struct inode *dest, struct cvsfs_fattr *src)
   dest->i_blksize	= src->f_blksize;
   dest->i_blocks	= src->f_blocks;
   dest->i_size		= src->f_size;
+  dest->u.generic_ip	= NULL;
+  
+  if (src->f_info.version != NULL)
+  {
+    info = kmalloc (sizeof (struct cvsfs_versioninfo), GFP_KERNEL);
+    if (info == NULL)
+      printk (KERN_ERR "cvsfs cvsfs_set_inode_attr: memory squeeze\n");
+    else
+    {
+      info->version = kmalloc (strlen (src->f_info.version) + 1, GFP_KERNEL);
+      if (info->version == NULL)
+      {
+        printk (KERN_ERR "cvsfs cvsfs_set_inode_attr: memory squeeze\n");
+	kfree (info);	// dummy behaviour - don't store version
+      }
+      else
+      {
+        strcpy (info->version, src->f_info.version);
+	dest->u.generic_ip = info;
+      }
+    }
+  }
 }
 
 
@@ -131,9 +159,9 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
   struct cvsfs_sb_info	*info;
   struct cvsfs_fattr	root;
   struct socket		*sock;
-
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_read_super\n");
-
+#endif
   info = kmalloc (sizeof (struct cvsfs_sb_info), GFP_KERNEL);
   if (!info)
   {
@@ -170,11 +198,7 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
     sock = NULL;
       
     if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 1) < 0)
-      printk (KERN_ERR "cvsfs read_super: could not connect to %u.%u.%u.%u\n",
-              info->address.sin_addr.s_addr & 0xff,
-              (info->address.sin_addr.s_addr >> 8) & 0xff,
-              (info->address.sin_addr.s_addr >> 16) & 0xff,
-              (info->address.sin_addr.s_addr >> 24) & 0xff);
+      printk (KERN_ERR "cvsfs read_super: could not connect to %s\n", info->mnt.server);
     else
     {
       cvsfs_init_root_dirent (info, &root);
@@ -185,7 +209,13 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
         sb->s_root = d_alloc_root (inode);
 
         if (sb->s_root)
+	{
+	  cvsfs_procfs_user_init (info->mnt.mountpoint, sb);
+
+	  printk (KERN_INFO "cvsfs: project '%s' mounted\n", info->mnt.project);
+
           return sb;
+	}
       }
       iput (inode);
     }
@@ -217,6 +247,9 @@ static void cvsfs_put_super (struct super_block * sb)
 
 //  cvsfs_disconnect (&(info->sock), info);
   cvsfs_cache_empty ();
+  
+  cvsfs_procfs_user_cleanup (info->mnt.mountpoint);
+
   kfree (info);
 }
 
@@ -232,6 +265,25 @@ static int cvsfs_statfs (struct super_block * sb, struct statfs * attr)
   attr->f_bavail = -1;
 
   return 0;
+}
+
+
+
+static void cvsfs_clear_inode (struct inode * inode)
+{
+//  char buff[256];
+  
+//  strncpy (buff, inode->i_dentry.d_name.name, inode->i_dentry.d_name.len);
+//  buff[inode->i_dentry.d_name.len] = '\0';
+#ifdef __DEBUG__
+  printk (KERN_ERR "cvsfs cvsfs_clear_inode\n");
+#endif
+  if (inode->u.generic_ip != NULL)
+  {
+    kfree (((struct cvsfs_versioninfo *) (inode->u.generic_ip))->version);
+    kfree ((struct cvsfs_versioninfo *) (inode->u.generic_ip));
+    inode->u.generic_ip = NULL;
+  }
 }
 
 

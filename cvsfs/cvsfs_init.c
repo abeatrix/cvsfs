@@ -22,6 +22,7 @@
 #include <linux/fs.h>
 
 #include "inode.h"
+#include "procfs.h"
 
 MODULE_AUTHOR ("Petric Frank <pfrank@gmx.de>");
 MODULE_DESCRIPTION ("CVS file system");
@@ -33,7 +34,9 @@ static DECLARE_FSTYPE (cvsfs_fs_type, "cvsfs", cvsfs_read_super, 0);
 
 static int __init init_cvsfs_fs ()
 {
-  printk (KERN_DEBUG "cvsfs: init_cvsfs_fs\n");
+  printk (KERN_DEBUG "cvsfs: init_cvs_vfs\n");
+
+  cvsfs_procfs_init ();
 
   return register_filesystem (&cvsfs_fs_type);
 }
@@ -42,7 +45,9 @@ static int __init init_cvsfs_fs ()
 
 static void __exit exit_cvsfs_fs ()
 {
-  printk (KERN_DEBUG "cvsfs: exit_cvsfs_fs\n");
+  printk (KERN_DEBUG "cvsfs: exit_cvs_vfs\n");
+
+  cvsfs_procfs_cleanup ();
 
   unregister_filesystem (&cvsfs_fs_type);
 }

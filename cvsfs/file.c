@@ -31,9 +31,11 @@
 /* forward references - file operations */
 static int cvsfs_file_open (struct inode *, struct file *);
 static int cvsfs_file_release (struct inode *, struct file *);
+// static int cvsfs_file_ioctl (struct inode *, struct file *, unsigned int, unsigned long);
 
 struct file_operations cvsfs_file_operations = {
 						 read:		generic_file_read,
+//						 ioctl:		cvsfs_file_ioctl,
 						 mmap:		generic_file_mmap,
 						 open:		cvsfs_file_open,
 						 release:	cvsfs_file_release,
@@ -68,6 +70,13 @@ static int cvsfs_file_release (struct inode * inode, struct file * file)
 {
   return 0;
 }
+
+
+
+//static int cvsfs_file_ioctl (struct inode * inode, struct file * file, unsigned int, unsigned long)
+//{
+//  return 0;
+//}
 
 
 

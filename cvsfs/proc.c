@@ -73,8 +73,9 @@ void cvsfs_password_scramble (char * data, char * result)
 
 void cvsfs_init_root_dirent (struct cvsfs_sb_info * server, struct cvsfs_fattr * fattr)
 {
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_init_root_dirent\n");
-
+#endif
   memset (fattr, 0, sizeof (struct cvsfs_fattr));
 
   fattr->f_nlink = 1;
@@ -133,9 +134,9 @@ unsigned long cvsfs_inet_addr (char * ip)
 int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
 {
   char *p;
-
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_parse_options '%s'\n", (char *) opts);
-
+#endif
   info->address.sin_addr.s_addr = cvsfs_inet_addr ("127.0.0.1");
   info->address.sin_port = htons (2401);
   strcpy (info->user, "anonymous");
@@ -149,7 +150,13 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
   for (p = strtok (opts, ","); p; p = strtok (NULL, ","))
   {
     if (strncmp (p, "server=", 7) == 0)
+    {
       info->address.sin_addr.s_addr = cvsfs_inet_addr (&p[7]);
+      sprintf (info->mnt.server, "%u.%u.%u.%u", info->address.sin_addr.s_addr &0xff,
+                    	                        (info->address.sin_addr.s_addr >> 8) &0xff,
+						(info->address.sin_addr.s_addr >> 16) &0xff,
+						(info->address.sin_addr.s_addr >> 24) &0xff);
+    }
     else
       if (strncmp (p, "module=", 7) == 0)
         strncpy (info->mnt.project, &p[7], sizeof (info->mnt.project) - 1);
@@ -168,7 +175,13 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
             if (strncmp (p, "cvsroot=", 8) == 0)
               strncpy (info->mnt.root, &p[8], sizeof (info->mnt.root) - 1);
             else
-	      printk (KERN_DEBUG "Invalid option '%s' passed\n", p);
+	      if (strncmp (p, "mount=", 6) == 0)
+	      {
+	        strncpy (info->mnt.mountpoint, &p[6], sizeof (info->mnt.mountpoint));
+	        printk (KERN_DEBUG "cvsfs: cvsfs_parse_options - mounting at %s\n", info->mnt.mountpoint);
+	      }
+	      else
+	        printk (KERN_ERR "Invalid option '%s' passed\n", p);
   }
 
   return 0;
@@ -176,22 +189,24 @@ int cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
 
 
 
-int cvsfs_get_fname (char * s, char * d)
+int cvsfs_get_fname (char * s, char * d, char ** ver)
 {
   static char *prefix = "M File ";
   static char *revision = " is new; current revision ";
   static char *dir = "E cvs server: Diffing ";
   int ret = -1;
 
+  *ver = NULL;
+  
   if (strncmp (s, prefix, strlen (prefix)) == 0)
   {
     char *ptr;
     int tocheck;
     int stop = 1;
     int i;
-
+#ifdef __DEBUG__
     printk (KERN_DEBUG " -- is a file\n");
-
+#endif
     ptr = &(s[strlen (prefix)]);
     tocheck = strlen (ptr) - strlen (revision);
     for (tocheck = strlen (ptr) - strlen (revision); tocheck > 0; --tocheck)
@@ -203,7 +218,11 @@ int cvsfs_get_fname (char * s, char * d)
           stop = 1;
 
       if (stop == 0)
+      {
+        *ver = &(ptr[strlen (revision)]);
+      
         break;
+      }
 
       *d = *ptr;
       ++d;
@@ -241,7 +260,7 @@ int cvsfs_convert_month (char *ptr, char **newptr)
     if (strncmp (ptr, monthNames[loop - 1], 3) == 0)
       return loop;
   
-  printk (KERN_DEBUG "cvsfs: cvsfs_convert_month - invalid month name %s\n", ptr);
+  printk (KERN_DEBUG "cvsfs: cvsfs_convert_month - invalid month name %s - using 'January'\n", ptr);
   
   return 1;  // no valid month string - return dummy: January
 }
@@ -267,7 +286,6 @@ unsigned long cvsfs_convert_time (char *ptr, char **newptr)
     ++ptr;
   hour = simple_strtoul (ptr, &ptr, 0);
   ++ptr;
-  ++ptr;
   if (*ptr == '0')
     ++ptr;
   minutes = simple_strtoul (ptr, &ptr, 0);
@@ -289,9 +307,9 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
   int i;
   
   sock = NULL;
-  
+#ifdef __DEBUG__  
   printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr '%s %s'\n", dir, entry->name);
-  
+#endif  
   if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
     printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - connect failed !\n");
@@ -299,7 +317,7 @@ int cvsfs_get_fattr (struct cvsfs_sb_info * info, char * dir, struct cvsfs_dir_e
     return -1;
   }
 
-  if (cvsfs_command_sequence_co (sock, info, dir, entry->name) < 0)
+  if (cvsfs_command_sequence_co (sock, info, dir, entry->name, entry->version) < 0)
   {
     cvsfs_disconnect (&sock);
 
@@ -367,15 +385,16 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
   char res[CVSFS_MAX_LINE];
   char line[CVSFS_MAX_LINE];
   char basedir[CVSFS_MAX_LINE];
+  char *version;
   char *ptr;
   int len;
   int i;
   struct socket *sock;
 
   sock = NULL;
-
+#ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - directory '%s'\n", name);
-
+#endif
   strcpy (basedir, info->mnt.project);
   strcat (basedir, name);
   len = strlen (basedir);
@@ -422,7 +441,7 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
       return -1;
     }
 
-    i = cvsfs_get_fname (line, res);
+    i = cvsfs_get_fname (line, res, &version);
     if (i != -1)
     {
       if ((strncmp (res, basedir, len) == 0) && (res[len] == '/'))
@@ -445,8 +464,21 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
 
           return -1;
         }
-
         strcpy (p->entry.name, ptr);
+
+        if (version != NULL)
+	{
+          p->entry.version = (char *) kmalloc (strlen (version) + 1, GFP_KERNEL);
+          if (!p->entry.version)
+          {
+	    kfree (p->entry.name);
+            kfree (p);
+
+            return -1;
+          }
+          strcpy (p->entry.version, version);
+	}
+
         p->entry.size = 0;
         p->entry.blocksize = 1024;
         p->entry.blocks = (p->entry.size + 1023) >> 9;
@@ -461,7 +493,12 @@ int cvsfs_loaddir (struct cvsfs_sb_info * info, char * name, struct cvsfs_direct
           if (i == 1)				/* file */
           {
             cvsfs_get_fattr (info, basedir, &(p->entry));
-            printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s'\n", res);
+#ifdef __DEBUG__
+	    if (p->entry.version != NULL)
+              printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s' - version %s\n", res, p->entry.version);
+	    else
+              printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s'\n", res);
+#endif
             p->entry.mode |= S_IFREG | S_IRUSR;
           }
 
@@ -572,6 +609,18 @@ int cvsfs_get_attr (struct dentry * dentry, struct cvsfs_fattr * fattr, struct c
   fattr->f_mtime = file->entry.date;     // CURRENT_TIME;
   fattr->f_uid = info->mnt.uid;
   fattr->f_gid = info->mnt.gid;
+  fattr->f_info.version = NULL;
+  if (file->entry.version != NULL)
+  {
+    fattr->f_info.version = kmalloc (strlen (file->entry.version) + 1, GFP_KERNEL);
+    if (fattr->f_info.version == NULL)
+    {
+      printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - memory squeeze !\n");
+      
+      return -1;
+    }
+    strcpy (fattr->f_info.version, file->entry.version);
+  }
 
   return 0;
 }
@@ -585,6 +634,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
   struct socket *sock;
   char line[CVSFS_MAX_LINE];
+  char *version;
   int res = 0;
   int i;
   
@@ -593,8 +643,22 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   cvsfs_get_name (dentry, line);
   
   sock = NULL;
-  
-  printk (KERN_DEBUG "cvsfs: cvsfs_read '%s %s'\n", info->mnt.project, line);
+
+  if ((inode->u.generic_ip != NULL) &&
+      (((struct cvsfs_versioninfo *) (inode->u.generic_ip))->version != NULL))
+  {
+    version = ((struct cvsfs_versioninfo *) (inode->u.generic_ip))->version;
+#ifdef __DEBUG__
+    printk (KERN_DEBUG "cvsfs: cvsfs_read '%s %s version %s'\n", info->mnt.project, line, version);
+#endif
+  }
+  else
+  {
+    version = NULL;
+#ifdef __DEBUG__
+    printk (KERN_DEBUG "cvsfs: cvsfs_read '%s %s'\n", info->mnt.project, line);
+#endif
+  }
   
   if (cvsfs_connect (&sock, info->user, info->pass, info->mnt.root, info->address, 0) < 0)
   {
@@ -603,7 +667,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
     return 0;
   }
 
-  if (cvsfs_command_sequence_co (sock, info, info->mnt.project, &line[1]) < 0)
+  if (cvsfs_command_sequence_co (sock, info, info->mnt.project, &line[1], version) < 0)
   {
     cvsfs_disconnect (&sock);
 
@@ -613,7 +677,7 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   i = cvsfs_long_readline (sock, line, CVSFS_MAX_LINE);
   if (i < 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_read - line read : %s\n", line);
+    printk (KERN_DEBUG "cvsfs: cvsfs_read - read timeout\n");
 
     cvsfs_disconnect (&sock);
 
@@ -622,11 +686,12 @@ int cvsfs_read (struct dentry * dentry, unsigned long offset, unsigned long coun
   
   while (strcmp (line, "ok") != 0)
   {
-    printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - handle string '%s'\n", line);
-    
+#ifdef __DEBUG__
+    printk (KERN_DEBUG "cvsfs: cvsfs_read - handle string '%s'\n", line);
+#endif
     if (strncmp (line, "error", 5) == 0)
     {
-      printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - error while reading file\n");
+      printk (KERN_DEBUG "cvsfs: cvsfs_read - 'error' returned from server\n");
 
       cvsfs_disconnect (&sock);
 

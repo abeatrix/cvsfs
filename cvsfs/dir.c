@@ -165,6 +165,8 @@ static struct dentry * cvsfs_lookup (struct inode * dir, struct dentry * dentry)
     d_add (dentry, inode);
   }
 
+  kfree (fattr.f_info.version);
+
   return NULL;
 }
 

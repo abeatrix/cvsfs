@@ -117,6 +117,11 @@ int cvsfs_cache_deldir (struct cvsfs_hashlist_node * node)
     {
       kfree (p->entry.name);
       p->entry.name = NULL;
+      if (p->entry.version != NULL)
+      {
+        kfree (p->entry.version);
+	p->entry.version = NULL;
+      }
     }
 
     kfree (p);

@@ -2,6 +2,7 @@
 #
 # Author: Petric Frank
 # Date:   May 24th, 2001
+#
 
 OBJECT_FILES =	cvsfs_init.o \
 		commands.o \
@@ -10,6 +11,7 @@ OBJECT_FILES =	cvsfs_init.o \
 		cache.o \
 		inode.o \
 		proc.o \
+		procfs.o \
 		socket.o
 			
 RESULT_FILE =	cvsfs.o
