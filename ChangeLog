@@ -1,5 +1,19 @@
+2002-09-10  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.5
+	* cvsfs/dir.c (cvsfs_lookup_validate): if no inode is allocated the
+	  dentry is invalid. This applies if a file was removed before
+	* include/cvsfs_ioctl.h: define entries for check-in and update
+	* cvsfs/file.c (cvsfs_file_ioctl): support check-in and update
+	* cvsfsd/TModuleActionIoctl.cpp (doit): support check-in and update
+        * cvsfsd/TInterface.h: add prototypes for Checkin and Update
+	* cvsfsd/TInterfacePserver.cpp (Checkin): Dummy implementation
+	* cvsfsd/TInterfacePserver.cpp (Update): Dummy implementation
+
+2002-09-09  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/dir.c (cvsfs_unlink): text in debug messages fixed
+
 2002-09-08  Petric Frank  <pfrank@gmx.de>
-	* configure.in: increase version to 1.1.3
+	* configure.in: increase version to 1.1.4
 	* cvsfsd/TCacheSystemCheckedout (AddFile): add missing file name
 	  handling to split off the file version
 
