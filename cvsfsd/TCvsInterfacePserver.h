@@ -52,6 +52,8 @@ class TCvsInterfacePserver : public TCvsInterface
     virtual int Invalidate (const std::string &, const std::string &);
     virtual int GetLocation (const std::string &, const std::string &, std::string &);
     virtual int Checkout (const std::string &, const std::string &);
+    virtual int Checkin (const std::string &, const std::string &);
+    virtual int Update (const std::string &, const std::string &);
 
   private:
     typedef enum

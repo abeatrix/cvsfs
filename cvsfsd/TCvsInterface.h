@@ -58,6 +58,8 @@ class TCvsInterface
     virtual int Invalidate (const std::string &, const std::string &) = 0;
     virtual int GetLocation (const std::string &, const std::string &, std::string &) = 0;
     virtual int Checkout (const std::string &, const std::string &) = 0;
+    virtual int Checkin (const std::string &, const std::string &) = 0;
+    virtual int Update (const std::string &, const std::string &) = 0;
 
   protected:
     TDirectory		*fRootDir;

@@ -106,6 +106,15 @@ bool TModuleActionIoctl::doit (TCvsInterface & interface)
         case CVSFS_CHECKOUT_VERSION:
           buffer << interface.Checkout (parm, version);
           break;
+
+        case CVSFS_CHECKIN:
+        case CVSFS_CHECKIN_VERSION:
+          buffer << interface.Checkin (parm, version);
+          break;
+
+        case CVSFS_UPDATE:
+          buffer << interface.Update (parm, version);
+          break;
       }
     }
   }

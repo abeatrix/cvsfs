@@ -719,6 +719,22 @@ int TCvsInterfacePserver::Checkout (const std::string & path,
 
 
 
+int TCvsInterfacePserver::Checkin (const std::string & path,
+				   const std::string & version)
+{
+  return 0;
+}
+
+
+
+int TCvsInterfacePserver::Update (const std::string & path,
+				  const std::string & version)
+{
+  return 0;
+}
+
+
+
 /***************************************************************
  **  The supporting methods                                   **
  ***************************************************************/
