@@ -37,7 +37,7 @@ static DECLARE_FSTYPE (cvsfs_fs_type, "cvsfs", cvsfs_read_super, 0);
 static int
 __init init_cvsfs_fs ()
 {
-  printk (KERN_DEBUG "cvsfs: init_cvs_vfs\n");
+  printk (KERN_DEBUG "cvsfs: version %s - init_cvs_vfs\n", VERSION);
 
   cvsfs_procfs_init ();
 
