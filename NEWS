@@ -1,0 +1,10 @@
+Version 1.0.5:
+
+Automake and autoconf support added. Thanks to Johan Rydberg.
+Allow users to address specific versions of the files in cvs. For
+example:
+  ls filename@@1.1
+  
+This will list the file 'filename' with revision '1.1'. The '@@' is
+used as delimiter. This should also work for all commands which access
+a file by its name (f.e. cat, zip, etc.).

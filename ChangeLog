@@ -23,3 +23,8 @@
 2001/11/18:
 * Activate the setting of file/directory mode setting in mount command
 * Provide cvsumount to unmount file systems mounted via cvsmount.
+
+2001/11/20:
+* Add configure and companions to the project (thanks Johan Rydberg)
+* Allow versioned access to files. i.e 'ls file.ext@@1.1'
+* Fix: versioned kernel symbols correctly detected
