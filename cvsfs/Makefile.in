@@ -1,6 +1,6 @@
-# Makefile.in generated automatically by automake 1.4 from Makefile.am
+# Makefile.in generated automatically by automake 1.4-p5 from Makefile.am
 
-# Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
+# Copyright (C) 1994, 1995-8, 1999, 2001 Free Software Foundation, Inc.
 # This Makefile.in is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -59,6 +59,7 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 CC = @CC@
+CXX = @CXX@
 MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
@@ -76,10 +77,10 @@ LINK = $(LD) -m elf_i386 -r -o $@
 libdir = /lib/modules/$(KERNEL_VERSION)/kernel/fs/
 
 pkglib_PROGRAMS = cvsfs.o
-cvsfs_o_SOURCES = cvsfs_init.c cache.c commands.c devfs.c dir.c 	file.c inode.c proc.c procfs.c socket.c util.c
+cvsfs_o_SOURCES = main.c devfs.c dir.c 	file.c inode.c proc.c procfs.c superblock.c util.c
 
 
-noinst_HEADERS = cache.h commands.h cvsfs_config.h devfs.h dir.h 	file.h inode.h procfs.h proc.h socket.h util.h
+noinst_HEADERS = cvsfs_config.h devfs.h dir.h 	file.h inode.h procfs.h proc.h superblock.h util.h
 
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
@@ -88,8 +89,8 @@ PROGRAMS =  $(pkglib_PROGRAMS)
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-cvsfs_o_OBJECTS =  cvsfs_init.o cache.o commands.o devfs.o dir.o file.o \
-inode.o proc.o procfs.o socket.o util.o
+cvsfs_o_OBJECTS =  main.o devfs.o dir.o file.o inode.o proc.o procfs.o \
+superblock.o util.o
 cvsfs_o_LDADD = $(LDADD)
 cvsfs_o_DEPENDENCIES = 
 cvsfs_o_LDFLAGS = 
@@ -104,9 +105,9 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-DEP_FILES =  .deps/cache.P .deps/commands.P .deps/cvsfs_init.P \
-.deps/devfs.P .deps/dir.P .deps/file.P .deps/inode.P .deps/proc.P \
-.deps/procfs.P .deps/socket.P .deps/util.P
+DEP_FILES =  .deps/devfs.P .deps/dir.P .deps/file.P .deps/inode.P \
+.deps/main.P .deps/proc.P .deps/procfs.P .deps/superblock.P \
+.deps/util.P
 SOURCES = $(cvsfs_o_SOURCES)
 OBJECTS = $(cvsfs_o_OBJECTS)
 
@@ -323,6 +324,7 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
 install-exec-local:
 	depmod -a
+	../makedevs
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

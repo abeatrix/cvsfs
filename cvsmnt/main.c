@@ -35,7 +35,6 @@
 #include <arpa/inet.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
-#include <linux/config.h>
 
 
 
@@ -453,88 +452,6 @@ parse_args (int argc, char *argv[], char **mount_point,
 
 
 
-void
-add_cache_option (char **data)
-{
-  struct passwd *uidentry;
-  char *configdir;
-    
-  if ((uidentry = getpwuid (getuid ())) != NULL)
-  {
-    configdir = (char *) malloc (strlen (uidentry->pw_dir) + 9);
-    
-    strcpy (configdir, uidentry->pw_dir);
-    strcat (configdir, "/.cvsfs/");
-  }
-  else
-  {
-    char *dir;
-    
-    dir = tempnam (NULL, NULL);
-    configdir = (char *) malloc (strlen (dir) + 2);
-    
-    strcpy (configdir, uidentry->pw_dir);
-    strcat (configdir, "/");
-    
-    free (dir); 
-  }
-  
-  add_option (data, "cache", configdir);
-    
-  free (configdir);
-}
-
-
-#ifndef CONFIG_DEVFS_FS
-int
-allocate_devfs_node (char * mount_point)
-{
-  FILE *procfs;
-  char *buffer;
-
-  // first read /proc/cvsfs/<mount point>/device to get the major/minor devnbr
-  buffer = malloc (strlen (mount_point) + 20);
-  strcpy (buffer, "/proc/cvsfs");
-  strcat (buffer, mount_point);
-  strcat (buffer, "/device");
-  
-  if ((procfs = fopen (buffer, "r")) != NULL)
-  {
-    char line[64];
-    char *next;
-    int major;
-    int minor;
-
-    // obtain the major/minor device number assigned in the driver    
-    fgets (line, sizeof (line), procfs);
-    fclose (procfs);
-    
-    major = strtol (line, &next, 10);
-    ++next;
-    minor = strtol (next, NULL, 10);
-
-    if ((major != -1) && (minor != -1))
-    {
-      // create the directory in /dev
-      mkdir ("/dev/cvsfs", S_IRUSR | S_IRGRP | S_IROTH |
-                           S_IXUSR | S_IXGRP | S_IXOTH | S_IWUSR);
-
-      // create the device node
-      sprintf (line, "/dev/cvsfs/cvsfs%i", minor);	 
-      unlink (line);				// remove node if existing
-      if (mknod (line, S_IFCHR | S_IRUSR | S_IWUSR, makedev (major, minor)))
-        fprintf (stderr, "cvsmnt: can not allocate device node '%s' - error %s\n",
-                 line, strerror (errno));
-    }
-  }
-  else
-    fprintf (stderr, "cvsmnt: can not open procfs file '%s'\n", buffer);
-
-  free (buffer);
-}
-#endif
-
-
 int
 main(int argc, char *argv[])
 {
@@ -572,8 +489,6 @@ main(int argc, char *argv[])
     help ();
     return -1;
   }
-
-  add_cache_option (&data);
 
   add_option (&data, "mount_user", current_uid ());
   add_option (&data, "mount_group", current_gid ());
@@ -637,11 +552,6 @@ main(int argc, char *argv[])
   /* cleanup allocated space */
   free (data);
 
-#ifndef CONFIG_DEVFS_FS
-  /* allocate the node file in /dev if not already allocated */
-  allocate_devfs_node (mount_point);
-#endif
-  
   /* cleanup allocated space */
   free (mount_point);
 

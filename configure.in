@@ -1,9 +1,10 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT(cvsumount/main.c)
-AM_INIT_AUTOMAKE(cvsfs, 1.0.9)
+AM_INIT_AUTOMAKE(cvsfs, 1.1.0)
 
 dnl Checks for programs.
 AC_PROG_CC
+AC_PROG_CXX
 AC_PROG_INSTALL
 
 dnl Checks for libraries.
@@ -22,4 +23,4 @@ AC_TYPE_OFF_T
 dnl Checks for library functions.
 AC_CHECK_FUNCS(mktime strdup strerror strtoul)
 
-AC_OUTPUT(cvsfs/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile)
+AC_OUTPUT(cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile)

@@ -37,9 +37,12 @@ The simplest way to compile this package is:
   2. Type `make' to compile the package.
 
   3. Type `make install' to install the programs and any data files and
-     documentation.
+     documentation. This have to be done with root privileges.
 
-  4. You can remove the program binaries and object files from the
+  4. If you do not use the device file system (devfsd) execute
+     'makedevs' as root user.
+
+  5. You can remove the program binaries and object files from the
      source code directory by typing `make clean'.  
 
 Compilers and Options

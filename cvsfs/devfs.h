@@ -18,10 +18,42 @@
 #ifndef __DEVFS_H__
 #define __DEVFS_H__
 
-//include <linux/fs.h>			/* char dev definitions here */
+#include <linux/config.h>
+#include <linux/wait.h>
+//#include <linux/spinlock.h>
+#include <asm/semaphore.h>
 
-// forward reference
+/* forward references */
 struct cvsfs_sb_info;
+//struct __wait_queue_head;
+#ifdef CONFIG_DEVFS_FS
+struct devfs_entry;
+#endif
+
+struct cvsfs_queue
+{
+  wait_queue_head_t	full;
+  wait_queue_head_t	empty;
+  int			size;
+  int			readpos;
+  char			*data;
+};
+
+struct cvsfs_device_info
+{
+#ifdef CONFIG_DEVFS_FS
+  struct devfs_entry	*handle;
+#else
+  int			major;
+#endif
+  struct cvsfs_queue	in;	/* receive buffer - data from daemon */
+  struct cvsfs_queue	out;	/* send buffer - data to daemon */
+  int			in_use;	/* device has been opened */
+//  spinlock_t		lock;
+  struct semaphore	lock;
+  int			daemon_notified;
+  int			unmount_in_process;
+};
 
 
 
@@ -30,7 +62,9 @@ void cvsfs_devfs_cleanup ();
 int cvsfs_devfs_user_init (struct cvsfs_sb_info *);
 void cvsfs_devfs_user_cleanup (struct cvsfs_sb_info *);
 
-int cvsfs_devfs_get_major ();
+/* queue handling routines */
+int cvsfs_add_request (struct cvsfs_sb_info *, const char *, int);
+int cvsfs_retrieve_data (struct cvsfs_sb_info *, char **);
 
 
 

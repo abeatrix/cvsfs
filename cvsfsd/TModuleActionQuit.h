@@ -1,0 +1,36 @@
+/***************************************************************************
+                          TModuleActionQuit.h  -  description
+                             -------------------
+    begin                : Sun Jun 9 18:32:49 CEST 2002
+    copyright            : (C) 2002 by Petric Frank
+    email                : pfrank@gmx.de
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+#ifndef __TMODULEACTIONQUIT_H__
+#define __TMODULEACTIONQUIT_H__
+
+#include "TModuleAction.h"
+
+
+
+class TModuleActionQuit : public TModuleAction
+{
+  public:
+    TModuleActionQuit ();
+    virtual ~TModuleActionQuit ();
+
+    virtual bool doit (TCvsInterface &);
+};
+
+
+
+#endif

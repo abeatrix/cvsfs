@@ -1,3 +1,12 @@
+Version 1.1.0:
+Rewrite kernel module to communicate via device to cvs server. This
+requires the a server process to be started. This server process is
+named cvsfsd and is communicating with the kernel module via the
+devices allocated under /dev/cvsfs.
+A first version of file caching has been introduced with the server
+process (cvsfsd daemon). It stores the files retrieved from the cvs
+server under /var/cache/cvsfs. This is actually hardcoded.
+
 Version 1.0.9:
 Add license info to the kernel module.
 Add /dev and devfs support (latter untested).

@@ -2,10 +2,11 @@ Short term:
 -----------
 
 * Support write operations to the file system
-* File caching for not checked-out files
-* Directory caching including version numbers
-* View modification (see other files than the ones in HEAD)
-* Allow to mount cvs root (project '.')
+* make behaviour of cvsfsd configurable (/etc/cvsfs.conf ?):
+  - where to place the cvs cache (actually: /var/cache/cvsfs)
+  - modify debug level
+  - cache cleanup
+  - ...
 
 
 Long term:
@@ -14,3 +15,4 @@ Long term:
 * Enchance GNU make to support logging via this driver to evaluate the
   file dependencies.
 * Adapt for kernel 2.2.x ?
+* allow > 2GB files (i.e. 64 Bit filesystem)

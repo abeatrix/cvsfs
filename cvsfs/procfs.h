@@ -20,12 +20,24 @@
 
 //include <linux/fs.h>			/* char dev definitions here */
 
+/* forward reference to superblock.h and proc_fs.h */
+struct cvsfs_sb_info;
+struct proc_dir_entry;
+
+/* procfs data */
+struct cvsfs_procfs_info
+{
+//  int			id;		/* sequence number */
+//  char			dir[8];		/* dito. as string */
+  struct proc_dir_entry	*data;		/* procfs base dir */
+};
+
 
 
 int cvsfs_procfs_init ();
 void cvsfs_procfs_cleanup ();
-int cvsfs_procfs_user_init (const char *, void *);
-void cvsfs_procfs_user_cleanup (const char *);
+int cvsfs_procfs_user_init (struct cvsfs_sb_info *);
+void cvsfs_procfs_user_cleanup (struct cvsfs_sb_info *);
 
 
 

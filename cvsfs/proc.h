@@ -23,22 +23,28 @@
 
 
 /* forward references for structures */
+struct semaphore;
 struct cvsfs_sb_info;
 struct cvsfs_fattr;
-struct cvsfs_directory;
-struct cvsfs_dir_entry;
+
+struct cvsfs_proc_info
+{
+  struct semaphore	lock;
+  char			*view;
+};
 
 
 
-void cvsfs_init_root_dirent (struct cvsfs_sb_info *, struct cvsfs_fattr *);
-int cvsfs_parse_options (struct cvsfs_sb_info *, void *);
-inline void cvsfs_lock (struct cvsfs_sb_info *);
-inline void cvsfs_unlock (struct cvsfs_sb_info *);
-int cvsfs_get_fattr (struct cvsfs_sb_info *, char *, struct cvsfs_dir_entry *);
-int cvsfs_loaddir (struct cvsfs_sb_info *, char *, struct cvsfs_directory *, char *);
-int cvsfs_get_name (struct dentry *, char *);
-int cvsfs_get_attr (struct dentry *, struct cvsfs_fattr *, struct cvsfs_sb_info *);
-int cvsfs_read (struct dentry *, unsigned long offset, unsigned long count, char *);
+/* functions required by file system */
+char * cvsfs_get_file (struct cvsfs_sb_info *, char *, int);
+int cvsfs_get_attr (struct cvsfs_sb_info *, char *, struct cvsfs_fattr *);
+int cvsfs_read (struct cvsfs_sb_info *, char *, char *, unsigned long, unsigned long, char *);
+
+/* functions required by procfs interface */
+int cvsfs_get_view (struct cvsfs_sb_info *, char **);
+void cvsfs_reset_viewrule (struct cvsfs_sb_info *);
+int cvsfs_append_viewrule (struct cvsfs_sb_info *, char *, char *);
+int cvsfs_control_command (struct cvsfs_sb_info *, char *, char *);
 
 
 

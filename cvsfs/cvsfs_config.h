@@ -1,5 +1,5 @@
 /***************************************************************************
-                          cvsfs_config.h  -  description
+                          cvsfs_config.h  -  modversions include file
                              -------------------
     begin                : Wed Nov 7 2001
     copyright            : (C) 2001 by Petric Frank

@@ -22,6 +22,20 @@
 
 
 
+struct cvsfs_dir_entry
+{
+  umode_t       mode;
+  char          *name;
+  off_t         size;
+  nlink_t       nlink;
+  unsigned long blocksize;
+  unsigned long blocks;
+  time_t        date;
+  char          *version;
+};
+
+		
+
 extern struct file_operations cvsfs_dir_operations;
 extern struct inode_operations cvsfs_dir_inode_operations;
 

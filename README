@@ -28,15 +28,34 @@ During development some other possible advantages came out.
 - you may use different userids for different modules on the same cvs
   repository.
 
+- you can mount a cvs repository at multiple locations.
+
 - others to come ...
 
 
 Building the package:
 ---------------------
 
-First change to te cvsfs-<version> directory. Then enter 'make install'.
-This will compile all necessary files and install them to the proper
-directories. You must be root to do that !
+First change to the cvsfs-<version> directory.
+Then enter 
+
+  ./configure
+  
+Next do
+
+  make
+
+This will compile all necessary files.
+To install the files you must be root. Enter
+
+  make install
+
+to install them to the proper directories.
+Add the script 'cvsfsd' to the apropriate run levels (/etc/rc.x) and start
+it (as root):
+
+  /etc/init.d/cvsfsd start
+  
 
 Usage (for root users):
 -----------------------
@@ -46,6 +65,8 @@ Usage (for root users):
   <cvs-pserver>       The cvs pserver to access. This may be a hostname
                       (with or without domain) or a ip-address.
 		      Only ip v4 is actually supported !
+		      The module may be a dot ('.') if you want to mount the
+		      root of the cvs server.
   <mount point>       The directory where the cvs tree is to be mounted.
 
 Options (comma separated list):
@@ -59,11 +80,11 @@ Options (comma separated list):
   uid=<userid>        The remote files will be presented unter this user id
                       to the customer. The userid may be given as user number
 		      or user name. If not given the current user id will
-		      be used.
+		      be used. (This option is available for root only !)
   gid=<groupid>       The remote files will be presented unter this group id
                       to the customer. The userid may be given as group number
 		      or group name. If not given the current group id will
-		      be used.
+		      be used. (This option is available for root only !)
   fmask=<attribs>     The files mounted will get this file attributes.
                       If not given the current umask will be used.
 		      (for example: umask = 022 is equivalent to fmask=755)
@@ -73,9 +94,9 @@ Options (comma separated list):
   dmask=<attribs>     The directories mounted will get this file attributes.
                       If not given the current umask will be used.
 
-To unmout the file system simply use umount.
+To unmount the file system simply use umount.
 Anyway you may use the cvsmount/cvsumount described below. The options 'uid'
-and 'gid' are also available in the cvsmount command for root users.
+and 'gid' are only accepted from root users.
 
 
 Usage (for normal users):
@@ -87,26 +108,14 @@ Usage (for normal users):
   <cvs-pserver>       The cvs pserver to access. This may be a hostname
                       (with or without domain) or a ip-address.
 		      Only ip v4 is actually supported !
+		      The module may be a dot ('.') if you want to mount the
+		      root of the cvs server.
   <mount point>       The directory where the cvs tree is to be mounted.
 
-Options (comma seperated list):
-  user=<username>     The username to be used for authentication at the
-                      cvs-pserver. If not given the user 'anaonymous' is
-		      applied.
-  password=<secret>   The password for the username given above. If omitted
-                      the a empty password is applied.
-  cvsroot=<root>      The cvs root directory. If omitted then /cvsroot is
-                      used as default.
-  fmask=<attribs>     The files mounted will get this file attributes.
-                      If not given the current umask will be used.
-		      (for example: umask = 022 is equivalent to fmask=755)
-		      Remark: The kernel driver will unmark the 'writeable'
-		              attribute as long the file is not checked
-			      out for update.
-  dmask=<attribs>     The directories mounted will get this file attributes.
-                      If not given the current umask will be used.
+The Options are the same as available for the mount command described above.
 
-Due to a check in umount you have to use cvsumount instead of umount.
+Due to a check in umount you have to use cvsumount instead of umount if
+you want to un-mount it.
 
 
 
@@ -168,8 +177,10 @@ Procfs support:
 
 Under /proc the module wlll, when loaded, create a subdirectory named 'cvsfs'.
 Each mount point where a cvsfs file system is mounted will appear under this
-subdirectory. The absolute path of the mount points will show up there. At
-the least directory level there are now 3 files:
+subdirectory.
+Each mount point gets a unique number. The actual assignments ist listed in
+/proc/cvsfs/mounts. Each mount point creates a directory in /proc/cvsfs equal
+to the unique number. In there are now 3 files:
 
   control (write only) - will control the cvsfs (checkout, checkin, etc.)
   status  (read only)  - gives an actual status of the mount point
@@ -178,8 +189,8 @@ the least directory level there are now 3 files:
 Using this entries the behaviour of the mounted cvsfs file system is
 controlled.
 
-Most parts of the procfs support is in early stage and may not function
-properly. There will be tools in future to ease the use of the procfs entries.
+Most parts of the procfs support is in early stage and may not work properly.
+There will be tools in future to ease the use of the procfs entries.
 
 
 Hint:
@@ -187,21 +198,24 @@ Hint:
 
 mount has version (mount -V) mount-2.10q. This mount version looks for unknown
 file systems to locate /bin/mount.<filesystem>.
-This file (in our case mount.cvsfs) is a one-line script which himself calls
-cvsmount which do the real work. Execute cvsmount without parameters to get
-a small help.
+This file (in our case mount.cvsfs) is (at my installation) a one-line script
+which himself calls cvsmount which do the real work. Execute cvsmount without
+parameters to get a small help. cvsmount itself calls cvsmnt which issues the
+system mount call.
 
-If this file is found it is executed with the parameters passed to mount.
-I don't know whether or not earlier or later versions on mount have this
-behaviour. If your version does not do this search then you can use cvsmount
-instead.
+If the file mount.cvsfs is found it is executed with the parameters passed to
+mount. I don't know whether or not earlier or later versions on mount have
+this behaviour. If your version does not do this search then you can use
+cvsmount instead.
 
 
 Environment:
 ------------
 
-Tested (and developed) with SuSE 7.1 and 7.2 (i386). The kernels used are
-the delivered precompiled kernels and the official one 2.4.10.
+Tested (and developed) with SuSE 7.3 (i386). The kernels used are the
+delivered precompiled kernels and the official one 2.4.10.
+
+I have tested the compilation on a Debian 3.1 release.
 
 I can not guarantee that it will compile on other platforms and/or other
 linux distributions.
@@ -209,7 +223,7 @@ linux distributions.
 The cvsfs kernel module supports only kernels 2.4.x
 
 The vfs module may have problems on linux builds with versioned kernel
-symbols. The driver refuses to load then. This scan be seen when doing a
+symbols. The driver refuses to load then. This can be seen when doing a
 'depmod -ae' after the driver install. It states (for example) the symbol
 kmalloc as unresolved.
 Actually i am rather new to kernel programming - so a hint to solve this
@@ -219,12 +233,8 @@ problem is welcome.
 Limitations:
 ------------
 
-This tool actually only retrieves the file names and directories at the HEAD
+This tool actually only retrieves the file names and directories of the HEAD
 branch. Reading of files is supported (hopefully).
-
-There are some timing limits inside the kernel module for responses from
-the cvs-pserver. They may exceed for slow remote machines. Have a look to
-cvsfs/proc.c to change this limitation.
 
 Only the pserver method of cvs is supported. May be extended later.
 
@@ -242,17 +252,9 @@ installed by calling 'make install'. You must be root to do this.
  source              ! destination
 ---------------------+--------------------------------------------------------
 cvsfs/cvsfs.o        ! /lib/modules/<kernel-version>/kernel/fs/cvsfs/cvsfs.o
+cvsfsd/cvsfsd        ! /usr/local/bin/cvsfsd
 symlink to cvsmount  ! /bin/mount.cvsfs
 cvsmount/cvsmount    ! /usr/local/bin/cvsmount
 cvsumount/cvsumount  ! /usr/local/bin/cvsumount
 cvsmnt/cvsmnt        ! /usr/local/bin/cvsmnt
-
-Actually there is no configure script available. So if you want the get an
-other behaviour you have to modify the Makefile's yourself.
-
-
-Help required:
---------------
-
-If someone provides me with a configure script - i will be glad since my
-knowledge on that subject is very low.
+script makedevs      ! /dev/cvsfs/0 ... 255  (if no device filesystem is used)

@@ -1,0 +1,14 @@
+Begin3
+Title:          Cvsfs 
+Version:        1.1.0
+Entered-date:   
+Description:    CVS virtual file system
+Keywords:       cvsfs
+Author:         Petric Frank <pfrank@gmx.de> 
+Maintained-by:  Petric Frank <pfrank@gmx.de> 
+Primary-site:   	        
+Home-page:      http://sourceforge.net/projects/cvsfs 
+Original-site:  
+Platforms:      Linux and other Unices
+Copying-policy: GNU Public License
+End

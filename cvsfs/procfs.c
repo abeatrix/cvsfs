@@ -19,345 +19,37 @@
 #include "procfs.h"
 
 #include <linux/kernel.h>		/* printk */
-
 #include <linux/module.h>
 // #include <linux/ctype.h>		/* defines isspace */
 #include <linux/proc_fs.h>		/* support for /proc file system */
-#include "inode.h"
+#include "superblock.h"
 #include "util.h"
-#include "devfs.h"
+#include "proc.h"
 
 
 
-// this structure (and the accompanied functions) is defined to solve the
-// problem with duplicate /proc entries. It establishes a conting object
-// to the directory/file entries.
-struct cvsfs_proc_tree
-{
-  struct cvsfs_proc_tree *next;
-  struct cvsfs_proc_tree *prev;
-  struct cvsfs_proc_tree *subdir;
-  struct cvsfs_proc_tree *parent;
-  struct proc_dir_entry  *proc;
-  int			 usage_count;
-  char			 name[1];
-};
+//#define __DEBUG__
 
-
-
-static struct cvsfs_proc_tree *cvsfs_tree;
+#define MAX_MOUNTS	32000
 
 
 
 const char *cvsfs_procfs_root		= "cvsfs";
+const char *cvsfs_procfs_mounts		= "mounts";
 const char *cvsfs_procfs_status		= "status";
 const char *cvsfs_procfs_view		= "view";
 const char *cvsfs_procfs_control	= "control";
-const char *cvsfs_procfs_device		= "device";
+
+static struct proc_dir_entry *cvsfs_root = NULL;
 
 
 
 /* forward references */
+static int proc_cvsfs_read_mounts (char *, char **, off_t, int, int *, void *);
 static int proc_cvsfs_read_status (char *, char **, off_t, int, int *, void *);
 static int proc_cvsfs_read_view (char *, char **, off_t, int, int *, void *);
 static int proc_cvsfs_write_view (struct file *, const char *, unsigned long, void *);
 static int proc_cvsfs_write_control (struct file *, const char *, unsigned long, void *);
-static int proc_cvsfs_read_device (char *, char **, off_t, int, int *, void *);
-
-
-
-/* forward references of local functions */
-static struct cvsfs_proc_tree * find_child (const char *, struct cvsfs_proc_tree *);
-static struct cvsfs_proc_tree * find_subdir (const char *, struct cvsfs_proc_tree *);
-static struct cvsfs_proc_tree * create_child (const char *, mode_t, struct cvsfs_proc_tree *);
-static struct cvsfs_proc_tree * create_subdir (const char *, struct cvsfs_proc_tree *);
-static void kill_child_tree (struct cvsfs_proc_tree *);
-static void remove_child (const char *, struct cvsfs_proc_tree *);
-static void remove_subdir (const char *, struct cvsfs_proc_tree *);
-
-
-
-/* Start of the helper functions to circumvent procfs problems */
-static struct cvsfs_proc_tree *
-find_child (const char * name, struct cvsfs_proc_tree * parent)
-{
-  struct cvsfs_proc_tree *loop;
-
-  for (loop = parent->subdir; loop != NULL; loop = loop->next)
-    if (strcmp (loop->name, name) == 0)
-      return loop;
-
-  return NULL;
-}
-
-
-
-static struct cvsfs_proc_tree *
-find_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
-{
-  struct cvsfs_proc_tree *loop;
-  char *ptr;
-
-  if ((path == NULL) || (*path == '\0'))
-    return parent;
-
-  if ((ptr = strchr (path, '/')) != NULL)
-  {
-    *ptr = '\0';
-    ++ptr;
-  }
-
-  if (*path != '\0')
-  {
-    loop = find_child (path, parent);
-
-    if ((loop != NULL) && (ptr != NULL) && (*ptr != '\0'))
-      loop = find_subdir_recursive (ptr, loop);
-  }
-  else
-  {
-    if ((ptr != NULL) && (*ptr != '\0'))
-      loop = find_subdir_recursive (ptr, parent);
-    else
-      loop = NULL;
-  }
-
-  return loop;
-}
-
-
-static struct cvsfs_proc_tree *
-find_subdir (const char * path, struct cvsfs_proc_tree * base)
-{
-  char pathelem[CVSFS_MAXPATHLEN];
-
-  strcpy (pathelem, path);
-
-  return find_subdir_recursive (pathelem, base);
-}
-
-
-
-static struct cvsfs_proc_tree *
-create_child (const char * name, mode_t mode, struct cvsfs_proc_tree * parent)
-{
-  struct cvsfs_proc_tree *child;
-
-  if ((parent == NULL) || (name == NULL) || (*name == '\0'))
-    return NULL;
-
-  if ((child = find_child (name, parent)) == NULL)
-  {
-    // child not found - create and insert one
-    child = (struct cvsfs_proc_tree *) kmalloc (sizeof (struct cvsfs_proc_tree) +
-                                                strlen (name), GFP_KERNEL);
-    if (child == NULL)
-    {
-      printk (KERN_ERR "cvsfs: create_tree_entry - memory squeeze\n");
-
-      return NULL;
-    }
-
-    child->proc = create_proc_entry (name, mode, parent->proc);
-    if (child->proc == NULL)
-    {
-      kfree (child);
-
-      printk (KERN_ERR "cvsfs: create_tree_entry - memory squeeze\n");
-
-      return NULL;
-    }
-
-    child->proc->owner = THIS_MODULE;
-
-    child->next = parent->subdir;
-    child->prev = NULL;
-    child->parent = parent;
-    child->subdir = NULL;
-    child->usage_count = 1;
-    strcpy (child->name, name);
-
-    if (child->next != NULL)
-      child->next->prev = child;
-
-    parent->subdir = child;
-#ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: create_child - child '%s' created\n", name);
-#endif
-  }
-  else
-  {
-#ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: create_child - child '%s' re-used\n", name);
-#endif
-    ++(child->usage_count);
-  }
-
-  return child;
-}
-
-
-
-static struct cvsfs_proc_tree *
-create_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
-{
-  struct cvsfs_proc_tree *element;
-  char *ptr;
-#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: create_subdir_recursive - path = '%s'\n", path);
-#endif
-  if (*path == '/')
-    return create_subdir_recursive (&(path[1]), parent);
-
-  if ((ptr = strchr (path, '/')) != NULL)
-  {
-    *ptr = '\0';
-    ++ptr;
-  }
-
-  element = create_child (path, S_IFDIR | S_IRUGO | S_IXUGO, parent);
-  if (element == NULL)
-  {
-    remove_child (path, parent);
-#ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: create_subdir_recursive - element creation of '%s' failed\n", path);
-#endif
-    return NULL;
-  }
-#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: create_subdir_recursive - element '%s' created\n", path);
-#endif
-  if ((ptr != NULL) && (*ptr != '\0'))
-    element = create_subdir_recursive (ptr, element);
-
-  return element;
-}
-
-
-
-static struct cvsfs_proc_tree *
-create_subdir (const char * path, struct cvsfs_proc_tree * parent)
-{
-  char pathelem[CVSFS_MAXPATHLEN];
-
-  strcpy (pathelem, path);
-
-  return create_subdir_recursive (pathelem, parent);
-}
-
-
-
-static void
-kill_child_tree (struct cvsfs_proc_tree * start)
-{
-  struct cvsfs_proc_tree *loop;
-
-  if (start == NULL)
-    return;
-
-  while ((loop = start->subdir) != NULL)
-  {
-    kill_child_tree (loop);
-    remove_proc_entry (loop->name, start->proc);
-
-    start->subdir = loop->next;
-    kfree (loop);
-  }
-}
-
-
-
-static void
-remove_child (const char * name, struct cvsfs_proc_tree * parent)
-{
-  struct cvsfs_proc_tree *loop;
-
-  if (parent == NULL)
-    return;
-
-  if ((loop = find_child (name, parent)) != NULL)
-  {
-    if (loop->usage_count > 1)
-    {
-      --(loop->usage_count);
-#ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: remove_child - child usage of '%s' decremented\n", name);
-#endif
-    }
-    else
-    {
-      // cleanup complete subdirectory
-      kill_child_tree (loop);
-
-      // remove from chain
-      if (loop == parent->subdir)         // first in list ?
-        parent->subdir = loop->next;
-      else
-        loop->prev->next = loop->next;
-
-      // kill procfs entry
-      remove_proc_entry (name, parent->proc);
-
-      kfree (loop);
-#ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: remove_child - child '%s' removed\n", name);
-#endif
-    }
-  }
-}
-
-
-
-static void
-remove_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
-{
-  struct cvsfs_proc_tree *sub;
-  char *ptr;
-
-  if ((parent == NULL) || (path == NULL) || (*path == '\0'))
-    return;
-
-  if (*path == '/')
-  {
-    remove_subdir_recursive (&(path[1]), parent);
-
-    return;
-  }
-
-  if ((ptr = strchr (path, '/')) != NULL)
-  {
-    *ptr = '\0';
-    ++ptr;
-  }
-
-  if ((sub = find_child (path, parent)) != NULL)
-  {
-    if ((ptr != NULL) && (*ptr != '\0'))
-      remove_subdir_recursive (ptr, sub);
-
-    remove_child (path, parent);
-#ifdef __DEBUG__
-    printk (KERN_DEBUG "cvsfs: remove_subdir_recursive - element '%s' removed\n", path);
-#endif
-  }
-#ifdef __DEBUG__
-  else
-    printk (KERN_DEBUG "cvsfs: remove_subdir_recursive - element '%s' not found\n", path);
-#endif
-}
-
-
-
-static void
-remove_subdir (const char * path, struct cvsfs_proc_tree * base)
-{
-  char pathelem[CVSFS_MAXPATHLEN];
-
-  strcpy (pathelem, path);
-
-  remove_subdir_recursive (pathelem, base);
-}
-/* End of the helper functions to circumvent procfs problems */
 
 
 
@@ -365,29 +57,23 @@ remove_subdir (const char * path, struct cvsfs_proc_tree * base)
 int
 cvsfs_procfs_init ()
 {
-  struct proc_dir_entry *cvsfs_root;
-
-  cvsfs_tree = NULL;
   cvsfs_root = proc_mkdir (cvsfs_procfs_root, NULL);
   if (cvsfs_root != NULL)
   {
-    cvsfs_tree = (struct cvsfs_proc_tree *)
-                 kmalloc (sizeof (struct cvsfs_proc_tree) +
-                          strlen (cvsfs_procfs_root), GFP_KERNEL);
-    if (cvsfs_tree != NULL)
+    struct proc_dir_entry *entry;
+    
+    cvsfs_root->owner = THIS_MODULE;
+    
+    entry = create_proc_entry (cvsfs_procfs_mounts, S_IFREG | S_IRUGO, cvsfs_root);
+    if (entry != NULL)
     {
-      cvsfs_tree->next = NULL;
-      cvsfs_tree->prev = NULL;
-      cvsfs_tree->subdir = NULL;
-      cvsfs_tree->parent = NULL;
-      cvsfs_tree->proc = cvsfs_root;
-      cvsfs_tree->usage_count = 1;
-      strcpy (cvsfs_tree->name, cvsfs_procfs_root);
+      entry->read_proc = proc_cvsfs_read_mounts;
+      entry->owner = THIS_MODULE;
 
       return 0;
     }
     else
-      kfree (cvsfs_root);
+      remove_proc_entry (cvsfs_procfs_root, NULL);
   }
 
   printk (KERN_ERR "cvsfs: procfs_init - failed\n");
@@ -401,12 +87,10 @@ cvsfs_procfs_init ()
 void
 cvsfs_procfs_cleanup ()
 {
-  if (cvsfs_tree != NULL)
+  if (cvsfs_root != NULL)
   {
-    kill_child_tree (cvsfs_tree);
-    remove_proc_entry (cvsfs_procfs_root, 0);
-    kfree (cvsfs_tree);
-    cvsfs_tree = NULL;
+    remove_proc_entry (cvsfs_procfs_mounts, cvsfs_root);
+    remove_proc_entry (cvsfs_procfs_root, NULL);
   }
 }
 
@@ -414,53 +98,74 @@ cvsfs_procfs_cleanup ()
 
 /* call when a mount is issued - create mount specific procfs entries */
 int
-cvsfs_procfs_user_init (const char * root, void * sb)
+cvsfs_procfs_user_init (struct cvsfs_sb_info * sb)
 {
-  struct cvsfs_proc_tree *base;
+  struct proc_dir_entry *base;
 
-  if (cvsfs_tree == NULL)
+  if (cvsfs_root == NULL)
     return -1;
 
-  base = create_subdir (root, cvsfs_tree);
+  sb->procfs.data = NULL;
+
+  if (sb->id == 0)
+  {
+#ifdef __DEBUG__
+    printk (KERN_ERR "cvsfs: procfs_user_init - no valid id assigned\n");
+#endif
+
+    return -1;		/* no more ids available - exit */
+  }
+
+  base = proc_mkdir (sb->idstring, cvsfs_root);
+  sb->procfs.data = base;
   if (base != NULL)
   {
-    struct cvsfs_proc_tree *element;
+    struct proc_dir_entry *element;
 
-    if ((element = create_child (cvsfs_procfs_status,
-                                 S_IFREG | S_IRUGO, base)) != 0)
+    base->owner = THIS_MODULE;
+    base->data = sb;
+    
+    if ((element = create_proc_entry (cvsfs_procfs_status,
+                                      S_IFREG | S_IRUGO, base)) != NULL)
     {
-      element->proc->data = sb;
-      element->proc->read_proc = proc_cvsfs_read_status;
-      if ((element = create_child (cvsfs_procfs_view,
-                                   S_IFREG | S_IWUGO | S_IRUGO, base)) != 0)
+      element->owner = THIS_MODULE;
+      element->data = sb;
+      element->uid = sb->mount.uid;
+      element->gid = sb->mount.gid;
+      element->read_proc = proc_cvsfs_read_status;
+      
+      if ((element = create_proc_entry (cvsfs_procfs_view,
+                                        S_IFREG | S_IWUSR | S_IRUGO, base)) != NULL)
       {
-        element->proc->data = sb;
-        element->proc->read_proc = proc_cvsfs_read_view;
-        element->proc->write_proc = proc_cvsfs_write_view;
+        element->owner = THIS_MODULE;
+        element->data = sb;
+        element->uid = sb->mount.uid;
+        element->gid = sb->mount.gid;
+        element->read_proc = proc_cvsfs_read_view;
+        element->write_proc = proc_cvsfs_write_view;
 
-        if ((element = create_child (cvsfs_procfs_control,
-                                     S_IFREG | S_IWUGO, base)) != 0)
+        if ((element = create_proc_entry (cvsfs_procfs_control,
+                                          S_IFREG | S_IWUSR, base)) != NULL)
         {
-          element->proc->data = sb;
-          element->proc->write_proc = proc_cvsfs_write_control;
+          element->owner = THIS_MODULE;
+          element->data = sb;
+          element->uid = sb->mount.uid;
+          element->gid = sb->mount.gid;
+          element->write_proc = proc_cvsfs_write_control;
 
-          if ((element = create_child (cvsfs_procfs_device,
-                                       S_IFREG | S_IRUGO, base)) != 0)
-          {
-            element->proc->data = sb;
-            element->proc->read_proc = proc_cvsfs_read_device;
-
-            return 0;
-	  }
-	  remove_child (cvsfs_procfs_control, base);
+#ifdef __DEBUG__
+          printk (KERN_ERR "cvsfs: procfs_user_init - ID %d successful\n", sb->id);
+#endif
+	  
+	  return 0;		/* successful exit */
         }
-	remove_child (cvsfs_procfs_view, base);
+	remove_proc_entry (cvsfs_procfs_view, base);
       }
-      remove_child (cvsfs_procfs_status, base);
+      remove_proc_entry (cvsfs_procfs_status, base);
     }
   }
 
-  remove_subdir (root, cvsfs_tree);
+  remove_proc_entry (sb->idstring, cvsfs_root);
 
   printk (KERN_ERR "cvsfs: procfs_user_init - failed\n");
 
@@ -469,25 +174,61 @@ cvsfs_procfs_user_init (const char * root, void * sb)
 
 
 
-/* calle in case of umount - remove mount specific procfs entries */
+/* called in case of umount - remove mount specific procfs entries */
 void
-cvsfs_procfs_user_cleanup (const char * root)
+cvsfs_procfs_user_cleanup (struct cvsfs_sb_info * sb)
 {
-  struct cvsfs_proc_tree *base;
-
-  if (cvsfs_tree)
+  if ((cvsfs_root != NULL) && (sb->procfs.data != NULL))
   {
-    base = find_subdir (root, cvsfs_tree);
-    if (base != NULL)
-    {
-      remove_child (cvsfs_procfs_status, base);
-      remove_child (cvsfs_procfs_view, base);
-      remove_child (cvsfs_procfs_control, base);
-      remove_child (cvsfs_procfs_device, base);
-    }
-
-    remove_subdir (root, cvsfs_tree);
+    struct proc_dir_entry *base;
+    
+    base = sb->procfs.data;
+    
+    remove_proc_entry (cvsfs_procfs_status, base);
+    remove_proc_entry (cvsfs_procfs_view, base);
+    remove_proc_entry (cvsfs_procfs_control, base);
+    remove_proc_entry (sb->idstring, cvsfs_root);
   }
+}
+
+
+
+static int
+proc_cvsfs_read_mounts (char *buffer, char **start,
+                        off_t offset, int size, int *eof, void *data)
+{
+  int len;
+  int pos;
+  struct cvsfs_sb_info *scan;
+
+  *eof = 0;
+
+  pos = 0;
+  len = 0;
+  scan = cvsfs_read_lock_superblock_list ();
+  /* scan the superblock list for a free id - they were assigned sequentially */
+  while (scan != NULL)
+  {
+    int itemsize = strlen (scan->idstring) + strlen (scan->mount.mountpoint) + 2;
+    
+    if (pos >= offset)
+    {
+      if ((pos + itemsize + 1) >= size)
+        break;
+	
+      len += sprintf (buffer, "%s %s\n", scan->idstring, scan->mount.mountpoint);
+    }
+    
+    pos += size;
+    scan = scan->next;
+  }
+
+  if (scan == NULL)
+    *eof = 1;
+
+  cvsfs_read_unlock_superblock_list ();
+
+  return len;
 }
 
 
@@ -497,32 +238,32 @@ proc_cvsfs_read_status (char *buffer, char **start,
                         off_t offset, int size, int *eof, void *data)
 {
   int len;
-  struct super_block *sb;
   struct cvsfs_sb_info *info;
 
   if (data == NULL)
     return 0;
 
-  sb = (struct super_block *) data;
-  info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+  info = (struct cvsfs_sb_info *) data;
 
-  len = sprintf (buffer, "cvsfs running\n");
-  len += sprintf (buffer + len, "  Server ................ %s\n", info->mnt.server);
-  len += sprintf (buffer + len, "  CVS root .............. %s\n", info->mnt.root);
-  len += sprintf (buffer + len, "  Project ............... %s\n", info->mnt.project);
-  len += sprintf (buffer + len, "  Mountpoint ............ %s\n", info->mnt.mountpoint);
-  len += sprintf (buffer + len, "  Fileattribs ........... %04o\n", (info->mnt.file_mode & 0xfff));
-  len += sprintf (buffer + len, "  Dir attribs ........... %04o\n", (info->mnt.dir_mode & 0xfff));
-  if (info->mnt.device_id >= 0)
+  len = sprintf (buffer, "Server ................ %s\n", info->connection.server);
+  len += sprintf (buffer + len, "CVS root .............. %s\n", info->connection.root);
+  len += sprintf (buffer + len, "Project ............... %s\n", info->connection.project);
+  len += sprintf (buffer + len, "Mountpoint ............ %s\n", info->mount.mountpoint);
+  len += sprintf (buffer + len, "Fileattribs ........... %04o\n", (info->mount.file_mode & 0xfff));
+  len += sprintf (buffer + len, "Dir attribs ........... %04o\n", (info->mount.dir_mode & 0xfff));
+  if (info->id >= 1)
   {
-    len += sprintf (buffer + len, "  Device ................ /dev/cvsfs/cvsfs%i\n", info->mnt.device_id);
 #ifdef CONFIG_DEVFS_FS
+    len += sprintf (buffer + len, "Device ................ /dev/cvsfs/%i\n", info->id);
 #else
-    len += sprintf (buffer + len, "  Device (major/minor id) %i/%i\n", cvsfs_devfs_get_major (), info->mnt.device_id);
+    len += sprintf (buffer + len, "Device (major/minor id) %i/%i\n", info->device.major, info->id);
 #endif
   }
-  else
-    len += sprintf (buffer + len, "  No Device (out of numbers)\n");
+  else		/* should never go there - for sanity only */
+    len += sprintf (buffer + len, "No Device (out of numbers)\n");
+  len += sprintf (buffer + len, "Daemon attached ....... %s\n", info->device.in_use == 0 ? "no" : "yes");
+
+  *eof = 1;
 
   return len;
 }
@@ -534,34 +275,39 @@ proc_cvsfs_read_view (char *buffer, char **start,
                       off_t offset, int size, int *eof, void *data)
 {
   int len;
+  char *view;
+  struct cvsfs_sb_info *info;
 
   if (data == NULL)
     return 0;
 
-  len = sprintf (buffer, "* /CHECKEDOUT\n");
-  len += sprintf (buffer + len, "* /MAIN/HEAD\n");
+  info = (struct cvsfs_sb_info *) data;
+
+  len = cvsfs_get_view (info, &view);
+  if ((len <= 0) || (offset >= len))
+  {
+    *eof = 1;
+    len = 0;
+  }
+  else
+  {
+    int chunk;
+
+    if ((offset + size) < len)
+    {			/* we have to send in parts */
+      *eof = 0;
+      chunk = size;
+    }
+    else
+    {
+      *eof = 1;
+      chunk = len - offset;
+    }
+
+    memcpy (buffer, &(view[offset]), chunk);
+  }
 
   return len;
-}
-
-
-
-void
-cvsfs_reset_viewrule (struct super_block * sb)
-{
-  printk (KERN_DEBUG "cvsfs: cvsfs_reset_viewrule'\n");
-  printk (KERN_DEBUG "cvsfs: cvsfs_reset_viewrule - not implemented'\n");
-}
-
-
-
-int
-cvsfs_append_viewrule (struct super_block * sb, char *filemask, char *rule)
-{
-  printk (KERN_DEBUG "cvsfs: cvsfs_append_viewrule - filemask: '%s', rule: '%s'\n", filemask, rule);
-  printk (KERN_DEBUG "cvsfs: cvsfs_append_viewrule - not implemented\n");
-
-  return 0;
 }
 
 
@@ -570,7 +316,7 @@ static int
 proc_cvsfs_write_view (struct file *file, const char *buffer,
                        unsigned long size, void *data)
 {
-  struct super_block *sb;
+  struct cvsfs_sb_info *sb;
   char *line;
   char *filemask;
   char *rule;
@@ -580,12 +326,12 @@ proc_cvsfs_write_view (struct file *file, const char *buffer,
   if (data == NULL)
     return -EINVAL;
 
-  sb = (struct super_block *) data;
+  sb = (struct cvsfs_sb_info *) data;
 
   if (file->private_data == NULL)
     cvsfs_reset_viewrule (sb);
 
-  ++(file->private_data);
+  ++(file->private_data);	/* this expects 'private_data' initialized to 0 at open */
 
   for (ptr = (char *) buffer, len = 0;
        (*ptr != '\n') && (*ptr != '\0') && (len <= size); ++ptr, ++len);
@@ -634,26 +380,11 @@ proc_cvsfs_write_view (struct file *file, const char *buffer,
 
 
 
-int
-cvsfs_control_command (struct super_block * sb, char *command, char *parameter)
-{
-  if (parameter != NULL)
-    printk (KERN_DEBUG "cvsfs: cvsfs_control_command - command: '%s', parameter: '%s'\n", command, parameter);
-  else
-    printk (KERN_DEBUG "cvsfs: cvsfs_control_command - command: '%s', no parameter\n", command);
-
-  printk (KERN_DEBUG "cvsfs: cvsfs_control_command - not implemented\n");
-
-  return 0;
-}
-
-
-
 static int
 proc_cvsfs_write_control (struct file *file, const char *buffer,
                           unsigned long size, void *data)
 {
-  struct super_block *sb;
+  struct cvsfs_sb_info *sb;
   char *line;
   char *command;
   char *parameter;
@@ -663,12 +394,9 @@ proc_cvsfs_write_control (struct file *file, const char *buffer,
   if (data == NULL)
     return -EINVAL;
 
-  sb = (struct super_block *) data;
+  sb = (struct cvsfs_sb_info *) data;
 
-//  if (file->private_data == NULL)
-//    cvsfs_reset_viewrule (sb);
-
-  ++(file->private_data);
+  ++(file->private_data);	/* this expects 'private_data' initialized to 0 at open */
 
   for (ptr = (char *) buffer, len = 0;
        (*ptr != '\n') && (*ptr != '\0') && (len <= size); ++ptr, ++len);
@@ -707,27 +435,6 @@ proc_cvsfs_write_control (struct file *file, const char *buffer,
     len = -EINVAL;
 
   kfree (line);
-
-  return len;
-}
-
-
-
-static int
-proc_cvsfs_read_device (char *buffer, char **start,
-                        off_t offset, int size, int *eof, void *data)
-{
-  int len;
-  struct super_block *sb;
-  struct cvsfs_sb_info *info;
-
-  if (data == NULL)
-    return 0;
-
-  sb = (struct super_block *) data;
-  info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
-
-  len = sprintf (buffer, "%i:%i\n", cvsfs_devfs_get_major (), info->mnt.device_id);
 
   return len;
 }

@@ -22,13 +22,29 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/string.h>
-//#include <linux/ctype.h>
+#include <linux/dcache.h>
+#include <linux/slab.h>
 
 //#include <net/ip.h>
 
 //#include "inode.h"
 //#include "cache.h"
 //#include "socket.h"
+
+
+
+/* duplicate string in newly allocated space */
+char *
+strdup (const char * s)
+{
+  char * p;
+  
+  p = kmalloc (strlen (s) + 1, GFP_KERNEL);
+  if (p)
+    strcpy (p, s);
+
+  return p;
+}
 
 
 
@@ -57,4 +73,41 @@ cvsfs_rtrim (char * str)
     *ptr = '\0';
 
   return str;
+}
+
+
+
+/* evaluate absolute path from dentry structure */
+int
+cvsfs_get_name (struct dentry * d, char * name, int maxsize)
+{
+  int len = 0;
+  struct dentry *p;
+  
+  /* first step up to the top level and calculate path size */
+  for (p = d; p != p->d_parent; p = p->d_parent)
+    len += p->d_name.len + 1;
+    
+  if (len >= maxsize)
+    return -1;
+
+  /* special case: we are already at top level */    
+  if (len == 0)
+  {
+    name[0] = '/';
+    name[1] = '\0';
+  }
+  else
+  {
+    name[len] = '\0';
+    for (p = d; p != p->d_parent; p = p->d_parent)
+    {
+      len -= p->d_name.len;
+      strncpy (&(name[len]), p->d_name.name, p->d_name.len);
+      --len;
+      name[len] = '/';
+    }
+  }
+  
+  return 0;
 }

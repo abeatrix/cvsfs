@@ -25,6 +25,7 @@
 #include <linux/pagemap.h>
 
 #include "proc.h"
+#include "util.h"
 
 
 
@@ -102,10 +103,19 @@ static int
 cvsfs_file_readpage (struct file * file, struct page * page)
 {
   struct dentry *dentry = file->f_dentry;
+  struct inode *inode = dentry->d_inode;
+  struct super_block *sb = inode->i_sb;
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
   char *buffer;
+  char *version;
   unsigned long offset;
   unsigned long count;
   int result;
+  char name[512];
+
+  if (cvsfs_get_name (dentry, name, sizeof (name)) != 0)
+    return -EIO;
+  version = inode->u.generic_ip;
 
   get_page (page);
 
@@ -115,7 +125,7 @@ cvsfs_file_readpage (struct file * file, struct page * page)
 
   do
   {
-    result = cvsfs_read (dentry, offset, count, buffer);
+    result = cvsfs_read (info, name, version, offset, count, buffer);
 
     if (result < 0)
     {
@@ -127,7 +137,7 @@ cvsfs_file_readpage (struct file * file, struct page * page)
     count -= result;
     offset += result;
     buffer += result;
-    dentry->d_inode->i_atime = CURRENT_TIME;
+    inode->i_atime = CURRENT_TIME;
 
     if (!result)
       break;
@@ -145,4 +155,26 @@ io_error:
   put_page (page);
 
   return result;
+}
+
+
+
+/* init the root directory entry for this file system */
+void
+cvsfs_init_root_dirent (struct cvsfs_sb_info * server, struct cvsfs_fattr * fattr)
+{
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: cvsfs_init_root_dirent\n");
+#endif
+  memset (fattr, 0, sizeof (struct cvsfs_fattr));
+    
+  fattr->f_nlink = 1;
+  fattr->f_uid = server->mount.uid;
+  fattr->f_gid = server->mount.gid;
+  fattr->f_blksize = 512;
+  fattr->f_ino = 2;
+  fattr->f_mtime = CURRENT_TIME;
+  fattr->f_mode = server->mount.dir_mode;
+  fattr->f_size = 512;
+  fattr->f_blocks = 0;
 }

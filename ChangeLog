@@ -1,3 +1,26 @@
+2002-08-16  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/cvsfsd: Add the syslog capability to cvsfsd
+
+2002-08-15  Petric Frank  <pfrank@gmx.de>
+        * README: updated to reflect the actual behaviour
+	* cvsfs/cvsfsd: file caching added. Stores files under /var/cache
+	* cvsfs/cvsmnt: devfs dependant code removed
+
+2002-06-11  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/cvsfsd: newly created.
+
+2002-06-06  Petric Frank  <pfrank@gmx.de>
+	* cvsfs: rewrite kernel module
+	* cvsfs: remove socket access
+	* cvsfs: communicate via /dev
+	* cvsfs: firs treatment to make driver SMP capable
+	* cvsmnt/main.c: remove dependency to linux/config.h
+	* cvsmnt/main.c: do not create /dev files
+	* cvsmnt/main.c: remove passing caching directory
+
+2001-11-30  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.0.10
+
 2001-11-29  Petric Frank  <pfrank@gmx.de>
 	* cvsfs/cvsfs_init.c: add license info 'MODULE_LICENSE("GPL")'
 	* configure.in: increase version number to 1.0.9
@@ -6,6 +29,7 @@
 	* cvsmnt/Makefile.am: additions to allow inclusion of linux/config.h
 	  to allow detection of devfs support in the kernel.
 	  (bad thing, i know, but i don't know how to do that at runtime)
+        * cvsfs/inode.c: fix error if more than one file system was mounted.
 
 2001-11-28  Petric Frank  <pfrank@gmx.de>
 	* cvsfs/dir.c: add #include <linux/sched.h> to solve compile

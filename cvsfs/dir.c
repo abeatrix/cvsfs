@@ -26,11 +26,14 @@
 #include <linux/sched.h>
 #include <linux/smp_lock.h>
 #include <linux/slab.h>
+//#include <linux/dcache.h>
 
 #include "inode.h"
-#include "cache.h"
+#include "file.h"
 #include "proc.h"
+#include "util.h"
 
+//#define __DEBUG__
 
 
 /* forward references - directory operations */
@@ -66,7 +69,9 @@ static struct dentry_operations cvsfs_dentry_operations = {
 							  };
 							
 
-						
+
+
+/* returns a complete directory contents */						
 static int
 cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 {
@@ -74,68 +79,48 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
   struct inode *inode = dentry->d_inode;
   struct super_block *sb = inode->i_sb;
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
-  char buf[CVSFS_MAXPATHLEN];
-  int result;
-  int pos;
+  struct qstr qname;
+  unsigned long ino;
+  char buf[512];
+  char * name;
 
-  struct cvsfs_directory *dir;
-  struct cvsfs_dirlist_node *file;
-
-  if (cvsfs_get_name (dentry, buf) < 0)
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -1;
-
-  result = 0;
 
   switch ((unsigned int) f->f_pos)
   {
     case 0:
       if (filldir (dirent, ".", 1, 0, inode->i_ino, DT_DIR) < 0)
-        return result;
+        return 0;
 
       f->f_pos = 1;
 
     case 1:
       if (filldir (dirent, "..", 2, 1, dentry->d_parent->d_inode->i_ino, DT_DIR) < 0)
-        return result;
+        return 0;
 
       f->f_pos = 2;
 
     default:
-      cvsfs_lock (info);
-      dir = cvsfs_cache_get_dir (info, buf, NULL);
-      cvsfs_unlock (info);
+      /* ask cvsfs daemon to get the directory contents */
+      name = cvsfs_get_file (info, buf, f->f_pos);
+      if (!name)
+        return -1;	/* there are no files in this directory */
 
-      if (!dir)
-        return -1;
+      qname.name = name;
+      qname.len = strlen (name);
 
-      pos = 2;
-      for (file = dir->head; file != NULL; file = file->next)
-      {
-        if (pos == f->f_pos)
-        {
-          struct qstr qname;
-          unsigned long ino;
-          struct cvsfs_dir_entry *entry;
+      ino = find_inode_number (dentry, &qname);
+      if (!ino)
+        ino = iunique (dentry->d_sb, 2);
 
-          entry = cvsfs_cache_get_file (info, dir, file->entry.name, file->entry.version);
-
-          qname.name = entry->name;
-          qname.len = strlen (qname.name);
-
-          ino = find_inode_number (dentry, &qname);
-
-          if (!ino)
-            ino = iunique (dentry->d_sb, 2);
-
-          if (filldir (dirent, qname.name, qname.len, f->f_pos, ino, DT_UNKNOWN) >= 0)
-            ++(f->f_pos);
-        }
-
-        ++pos;
-      }
+      if (filldir (dirent, qname.name, qname.len, f->f_pos, ino, DT_UNKNOWN) >= 0)
+        ++(f->f_pos);
+	    
+      kfree (name);
   }
 
-  return result;
+  return 0;
 }
 
 
@@ -152,11 +137,16 @@ cvsfs_dir_open (struct inode * inode, struct file * file)
 static struct dentry *
 cvsfs_lookup (struct inode * dir, struct dentry * dentry)
 {
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp;
   struct cvsfs_fattr fattr;
   struct inode       *inode;
+  char buf[512];
 
-  if (cvsfs_get_attr (dentry, &fattr,
-                      (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp) < 0)
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
+    return ERR_PTR (-ENOENT);
+
+  /* do we have the file ? */
+  if (cvsfs_get_attr (info, buf, &fattr) < 0)
   {
     return ERR_PTR (-ENOENT);
   }
@@ -171,23 +161,34 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
     d_add (dentry, inode);
   }
 
-  kfree (fattr.f_info.version);
+  kfree (fattr.f_version);
 
   return NULL;
 }
 
 
 
+/* check whether the entry is valid anymore */
 static int
 cvsfs_lookup_validate (struct dentry * dentry, int flags)
 {
+#ifdef __DEBUG__
+  char buf[128];
+#endif
   struct inode *inode = dentry->d_inode;
   int valid = 1;
+
+#ifdef __DEBUG__
+  cvsfs_get_name (dentry, buf, sizeof (buf));
+  printk (KERN_DEBUG "cvsfs: lookup_validate - file %s\n", buf);
+#endif
 
   if (inode)
   {
     lock_kernel ();
 
+//    if (dentry->d_time
+    
     if (is_bad_inode (inode))
       valid = 0;
 
@@ -199,11 +200,23 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
 
 
 
+/* calculate a unique hash for the file name given */
 static int
 cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
 {
+#ifdef __DEBUG__
+  char buf[128];
+#endif
   unsigned long hash;
   int i;
+
+#ifdef __DEBUG__
+  cvsfs_get_name (dentry, buf, sizeof (buf));
+  printk (KERN_DEBUG "cvsfs: hash_dentry - file %s + ", buf);
+  memcpy (buf, str->name, str->len);
+  buf[str->len] = '\0';
+  printk (KERN_DEBUG "%s\n", buf);
+#endif
 
   hash = init_name_hash ();
 
@@ -217,6 +230,7 @@ cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
 
 
 
+/* compare the two qstrs */
 static int
 cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
 {
@@ -234,6 +248,7 @@ cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
 
 
 
+/* dentry will be freed - chance to free d_fsdata element if used */
 static int
 cvsfs_delete_dentry (struct dentry * dentry)
 {

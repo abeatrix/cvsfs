@@ -26,9 +26,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 /* actually hardcoded - must be configurable later ! */
-#define BINDIR "/usr/bin"
+#ifndef BINDIR
+#  define BINDIR "/usr/local/bin"
+#endif
 
 
 
@@ -176,17 +179,19 @@ init_mount (char *server, char *module, char *mountpoint,
   
   if (fork () == 0)
   {
-//    if (file_exist (BINDIR "/cvsmnt", NULL))
-//    {
-//      execv (BINDIR "/cvsmnt", args);
-//      fprintf (stderr, "execv of %s failed. Error was %s\n",
-//               BINDIR "/cvsmnt", strerror (errno));
-//    }
-//    else
-//    {
+    struct stat info;
+    
+    if (stat (BINDIR "/cvsmnt", &info) == 0)
+    {
+      execv (BINDIR "/cvsmnt", args);
+      fprintf (stderr, "execv of %s failed. Error was %s\n",
+               BINDIR "/cvsmnt", strerror (errno));
+    }
+    else
+    {
       execvp ("cvsmnt", args);
       fprintf (stderr, "execvp of cvsmnt failed. Error was %s\n", strerror (errno));
-//    }
+    }
     
     exit (1);
   }
