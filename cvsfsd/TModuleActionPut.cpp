@@ -21,7 +21,7 @@
 
 #include "TModuleActionPut.h"
 
-#include <strstream>
+#include <sstream>
 #include "TModuleServer.h"
 #include "TCvsInterface.h"
 #include "TSyslog.h"
@@ -46,7 +46,7 @@ TModuleActionPut::~TModuleActionPut ()
 bool TModuleActionPut::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
-  std::ostrstream result;
+  std::ostringstream result;
   char buf[512];
   int size;
 
@@ -102,8 +102,8 @@ bool TModuleActionPut::doit (TCvsInterface & interface)
     }
   }
 
-  if (result.pcount () != 0)
-    writeData (result.str (), result.pcount ());
+  if (result.str ().size () != 0)
+    writeData (result.str ().c_str (), result.str ().size ());
   else
     writeDummy ();
 

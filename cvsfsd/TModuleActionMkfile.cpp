@@ -19,10 +19,9 @@
 #include <config.h>
 #endif
 
-#include <strstream>
-
 #include "TModuleActionMkfile.h"
 
+#include <sstream>
 #include <asm/errno.h>
 #include "TModuleServer.h"
 #include "TCvsInterface.h"
@@ -48,7 +47,7 @@ TModuleActionMkfile::~TModuleActionMkfile ()
 bool TModuleActionMkfile::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
-  std::ostrstream buffer;
+  std::ostringstream buffer;
   char buf[512];
   int size;
 
@@ -98,8 +97,8 @@ bool TModuleActionMkfile::doit (TCvsInterface & interface)
     }
   }
 
-  if (buffer.pcount () != 0)
-    writeData (buffer.str (), buffer.pcount ());
+  if (buffer.str ().size () != 0)
+    writeData (buffer.str ().c_str (), buffer.str ().size ());
   else
     writeDummy ();
 
