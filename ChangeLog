@@ -1,3 +1,9 @@
+2001-11-22  Petric Frank  <pfrank@gmx.de>
+        * cache.c: reorganized cache strategy. Split getting of files.
+	* cache.h: structure cvsfs_dirlist_node gets new field has_full_data.
+	* proc.c (cvsfs_get_attr): change to modified caching.
+	* proc.h: export function cvsfs_get_fattr
+
 2001-11-21  Johan Rydberg  <johan@rydberg.com>
 
 	* cvsmount/Makefile.am (install-exec-local): Force creation

@@ -1,6 +1,8 @@
 Version 1.0.6:
 
 Revamp the source code to be in line with GNU coding standards.
+Modified the caching strategy to speed up the scan of the directories.
+
 
 
 Version 1.0.5:

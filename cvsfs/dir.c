@@ -101,7 +101,7 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 
     default:
       cvsfs_lock (info);
-      dir = cvsfs_cache_get (info, buf, NULL);
+      dir = cvsfs_cache_get_dir (info, buf, NULL);
       cvsfs_unlock (info);
 
       if (!dir)
@@ -114,8 +114,11 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
         {
           struct qstr qname;
           unsigned long ino;
+          struct cvsfs_dir_entry *entry;
 
-          qname.name = file->entry.name;
+          entry = cvsfs_cache_get_file (info, dir, file->entry.name, file->entry.version);
+
+          qname.name = entry->name;
           qname.len = strlen (qname.name);
 
           ino = find_inode_number (dentry, &qname);

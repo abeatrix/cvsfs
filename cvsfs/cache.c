@@ -26,9 +26,9 @@
 #include "inode.h"
 #include "proc.h"
 
-#define CVSFS_CACHE_LEN		5
-#define CVSFS_CACHE_HASH	5
-#define	CVSFS_CACHE_TTL		30
+#define CVSFS_CACHE_LEN		10
+#define CVSFS_CACHE_HASH	10
+#define	CVSFS_CACHE_TTL		240
 
 
 
@@ -199,6 +199,64 @@ cvsfs_cache_shrink (unsigned long hash)
 
 
 
+/* adds a file to a directory (called by cvsfs_readdir) */
+int
+cvsfs_cache_add_file (struct cvsfs_directory * dir,
+                      char * name, char * version, umode_t mode)
+{
+  struct cvsfs_dirlist_node *p;
+
+  p = (struct cvsfs_dirlist_node *)
+      kmalloc (sizeof (struct cvsfs_dirlist_node), GFP_KERNEL);
+  memset (p, 0, sizeof (struct cvsfs_dirlist_node));
+
+  p->has_full_data = 0;  // attributes have to be loaded later
+
+  p->entry.name = (char *) kmalloc (strlen (name) + 1, GFP_KERNEL);
+  if (!p->entry.name)
+  {
+    kfree (p);
+
+    return -1;
+  }
+  strcpy (p->entry.name, name);
+
+  if ((version != NULL) && (*version != '\0'))
+  {
+    p->entry.version = (char *) kmalloc (strlen (version) + 1, GFP_KERNEL);
+    if (!p->entry.version)
+    {
+      kfree (p->entry.name);
+      kfree (p);
+
+      return -1;
+    }
+    strcpy (p->entry.version, version);
+  }
+  else
+    p->entry.version = NULL;
+
+  p->entry.size = 0;
+  p->entry.blocksize = 1024;
+  p->entry.blocks = 0;
+  p->entry.date = CURRENT_TIME;
+  p->entry.mode = mode;
+  if ((mode & S_IFREG) != 0)
+  {
+    // if the file is not checked out - it is kept read only
+    // will be modified in later releases of cvsfs (file caching)
+    p->entry.mode &= ~S_IWUGO;
+  }
+
+  p->prev = NULL;
+  p->next = dir->head;
+  dir->head = p;
+  
+  return 0;
+}
+
+
+
 struct cvsfs_directory *
 cvsfs_cache_add (struct cvsfs_sb_info * info, char * name, char * version)
 {
@@ -259,16 +317,53 @@ cvsfs_cache_add (struct cvsfs_sb_info * info, char * name, char * version)
 
 
 
+/* gets one file from the cache - reads file attr from cvs if necessary.
+   Actually it allows only exact matches, but should be extended to support
+   file patterns and wildcards */
+struct cvsfs_dir_entry *
+cvsfs_cache_get_file (struct cvsfs_sb_info * info,
+                      struct cvsfs_directory * dir, char * name, char * version)
+{
+  struct cvsfs_dirlist_node * ptr;
+
+  for (ptr = dir->head; ptr != NULL; ptr = ptr->next)
+    if ((strcmp (ptr->entry.name, name) == 0) &&
+        ((version == NULL) || (ptr->entry.version == NULL) ||
+         (strcmp (ptr->entry.version, version) == 0)))
+    {
+      if (ptr->has_full_data == 0)
+      {
+        cvsfs_get_fattr (info, dir->name, &(ptr->entry));
+
+        if ((ptr->entry.mode & S_IFREG) != 0)
+        {
+          // if the file is not checked out - it is kept read only
+          // will be modified in later releases of cvsfs (file caching)
+          ptr->entry.mode &= ~S_IWUGO;
+        }
+
+        ptr->has_full_data = 1;
+      }
+
+      return &(ptr->entry);
+    }
+
+  return NULL;
+}
+
+
+
+/* gets one directory from the cache - reads directory from cvs if necessary */
 struct cvsfs_directory *
-cvsfs_cache_get (struct cvsfs_sb_info * info, char * name, char * version)
+cvsfs_cache_get_dir (struct cvsfs_sb_info * info, char * name, char * version)
 {
   struct cvsfs_hashlist_node *node;
   unsigned long hash;
 #ifdef __DEBUG__
   if (version == NULL)
-    printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - name %s\n", name);
+    printk (KERN_DEBUG "cvsfs: cvsfs_cache_get_dir - name %s\n", name);
   else
-    printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - name %s (version %s)\n", name, version);
+    printk (KERN_DEBUG "cvsfs: cvsfs_cache_get_dir - name %s (version %s)\n", name, version);
 #endif
   hash = cvsfs_cache_hash (name);
 
@@ -278,19 +373,21 @@ cvsfs_cache_get (struct cvsfs_sb_info * info, char * name, char * version)
       if ((CURRENT_TIME - node->directory.time) > CVSFS_CACHE_TTL)
       {
 #ifdef __DEBUG__
-        printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - cache add name %s\n", name);
+        printk (KERN_DEBUG "cvsfs: cvsfs_cache_get_dir - cache add name %s\n", name);
 #endif
         return cvsfs_cache_add (info, name, version);
       }
 
+      node->directory.time = CURRENT_TIME;   // multiple access - keep in cache
+
       cvsfs_cache_infront (hash, node);
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - return dir entry for %s\n", name);
+      printk (KERN_DEBUG "cvsfs: cvsfs_cache_get_dir - return dir entry for %s\n", name);
 #endif
       return &node->directory;
     }
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: cvsfs_cache_get - default add cache name %s\n", name);
+  printk (KERN_DEBUG "cvsfs: cvsfs_cache_get_dir - default add cache name %s\n", name);
 #endif
   return cvsfs_cache_add (info, name, version);
 }

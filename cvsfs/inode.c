@@ -201,7 +201,7 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
 	{
 	  cvsfs_procfs_user_init (info->mnt.mountpoint, sb);
 
-          cvsfs_cache_get (info, "/", NULL);
+          cvsfs_cache_get_dir (info, "/", NULL);
 
 	  printk (KERN_INFO "cvsfs: project '%s' mounted\n", info->mnt.project);
 
@@ -242,6 +242,8 @@ cvsfs_put_super (struct super_block * sb)
   cvsfs_cache_empty ();
   
   cvsfs_procfs_user_cleanup (info->mnt.mountpoint);
+
+  printk (KERN_INFO "cvsfs: project '%s' unmounted\n", info->mnt.project);
 
   kfree (info);
 }

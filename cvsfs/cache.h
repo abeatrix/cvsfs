@@ -40,6 +40,7 @@ struct cvsfs_dirlist_node
   struct cvsfs_dirlist_node	*prev;
   struct cvsfs_dirlist_node	*next;
   struct cvsfs_dir_entry	entry;
+  int				has_full_data;
 };
 
 struct cvsfs_directory
@@ -58,7 +59,9 @@ struct cvsfs_sb_info;
 
 int cvsfs_cache_init ();
 int cvsfs_cache_empty ();
-struct cvsfs_directory *cvsfs_cache_get (struct cvsfs_sb_info *, char *, char *);
+int cvsfs_cache_add_file (struct cvsfs_directory *, char *, char *, umode_t);
+struct cvsfs_dir_entry *cvsfs_cache_get_file (struct cvsfs_sb_info *, struct cvsfs_directory *, char *, char *);
+struct cvsfs_directory *cvsfs_cache_get_dir (struct cvsfs_sb_info *, char *, char *);
 
 
 

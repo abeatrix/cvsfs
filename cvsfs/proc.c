@@ -426,9 +426,8 @@ cvsfs_convert_attr (char *ptr, umode_t actual, char **newptr)
     actual = cvsfs_convert_attr_single (&(ptr[2]), actual,
                                         S_IRWXO, S_IROTH, S_IWOTH, S_IXOTH);
 
-  if ((*newptr = strchr (ptr, ',')) == NULL)
-    *newptr = strchr (ptr, '\0');
-  
+  *newptr = strchr (ptr, ',');
+
   return actual;
 }
 
@@ -443,10 +442,22 @@ cvsfs_get_fattr (struct cvsfs_sb_info * info,
   char line[CVSFS_MAX_LINE];
   char *ptr;
   int i;
+
+  if ((entry->mode & S_IFDIR) != 0)
+    return 0;				// is directory - cvs does not version it
   
+  strcpy (line, info->mnt.project);
+  strcat (line, dir);
+  i = strlen (line);
+  if (line[i - 1] == '/')
+    line[i - 1] = '\0';         /* purge trailing slashes */
+
   sock = NULL;
 #ifdef __DEBUG__  
-  printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr '%s %s'\n", dir, entry->name);
+  if (entry->version == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr '%s - %s'\n", line, entry->name);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr '%s - %s (version %s)'\n", line, entry->name, entry->version);
 #endif  
   if (cvsfs_connect (&sock, info->user, info->pass,
                      info->mnt.root, info->address, 0) < 0)
@@ -456,7 +467,7 @@ cvsfs_get_fattr (struct cvsfs_sb_info * info,
     return -1;
   }
 
-  if (cvsfs_command_sequence_co (sock, info, dir,
+  if (cvsfs_command_sequence_co (sock, info, line,
                                  entry->name, entry->version) < 0)
   {
     cvsfs_disconnect (&sock);
@@ -496,11 +507,20 @@ cvsfs_get_fattr (struct cvsfs_sb_info * info,
 
       if (strncmp (line, "u=", 2) == 0)
       {
+#ifdef __DEBUG__
+        printk (KERN_DEBUG "cvsfs: cvsfs_get_fattr - attribs : %s\n", line);
+#endif
         entry->mode = cvsfs_convert_attr (line, entry->mode, &ptr);
-	if (*ptr == ',')
+	if (ptr != NULL)
+	{
+	  ++ptr;
           entry->mode = cvsfs_convert_attr (ptr, entry->mode, &ptr);
-	if (*ptr == ',')
+	}
+	if (ptr != NULL)
+	{
+	  ++ptr;
           entry->mode = cvsfs_convert_attr (ptr, entry->mode, &ptr);
+	}
       }
       
       if (isdigit (*line) != 0)
@@ -535,7 +555,6 @@ int
 cvsfs_loaddir (struct cvsfs_sb_info * info, char * name,
                struct cvsfs_directory * dir, char * ver)
 {
-  struct cvsfs_dirlist_node *p;
   char res[CVSFS_MAX_LINE];
   char line[CVSFS_MAX_LINE];
   char basedir[CVSFS_MAX_LINE];
@@ -612,71 +631,27 @@ cvsfs_loaddir (struct cvsfs_sb_info * info, char * name,
 
       if ((i != -1) && (*ptr != '\0'))
       {
-        p = (struct cvsfs_dirlist_node *)
-	    kmalloc (sizeof (struct cvsfs_dirlist_node), GFP_KERNEL);
-        memset (p, 0, sizeof (struct cvsfs_dirlist_node));
-
-        p->entry.name = (char *) kmalloc (strlen (ptr) + 1, GFP_KERNEL);
-        if (!p->entry.name)
+        switch (i)
         {
-          kfree (p);
-
-          return -1;
-        }
-        strcpy (p->entry.name, ptr);
-
-        if (*version != '\0')
-	{
-          p->entry.version = (char *) kmalloc (strlen (version) + 1, GFP_KERNEL);
-          if (!p->entry.version)
-          {
-	    kfree (p->entry.name);
-            kfree (p);
-
-            return -1;
-          }
-          strcpy (p->entry.version, version);
-	}
-	else
-	  p->entry.version = NULL;
-
-        p->entry.size = 0;
-        p->entry.blocksize = 1024;
-        p->entry.blocks = (p->entry.size + 1023) >> 9;
-	p->entry.date = CURRENT_TIME;
-
-        if (i == 0)				/* directory */
-        {
+          case 0:			// is a directory
 #ifdef __DEBUG__
-          if (p->entry.version == NULL)
-            printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s'\n", p->entry.name);
-	  else
-            printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s' (version %s)\n", p->entry.name, p->entry.version);
+            printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add subdirectory '%s'\n", ptr);
 #endif
-          p->entry.mode |= info->mnt.dir_mode;
-        }
-        else
-          if (i == 1)				/* file */
-          {
-            p->entry.mode |= info->mnt.file_mode;	// default setting
-
-            cvsfs_get_fattr (info, basedir, &(p->entry));
+            cvsfs_cache_add_file (dir, ptr, version, info->mnt.dir_mode);
 	    
-	    p->entry.mode &= ~S_IWUGO;		// if the file is not checked out
+	    break;
+	    
+          case 1:			// is a file
 #ifdef __DEBUG__
-	    if (p->entry.version != NULL)
-              printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s' - version %s\n", res, p->entry.version);
+	    if (*version != '\0')
+              printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s' - version %s\n", ptr, version);
 	    else
-              printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s'\n", res);
+              printk (KERN_DEBUG "cvsfs: cvsfs_loaddir - add file '%s'\n", ptr);
 #endif
-	    // if the file is not checked out - will be modified
-	    // in later releases of cvsfs
-            p->entry.mode |= info->mnt.file_mode & ~S_IWUGO;
-          }
-
-        p->prev = NULL;
-        p->next = dir->head;
-        dir->head = p;
+            cvsfs_cache_add_file (dir, ptr, version, info->mnt.file_mode);
+	    
+	    break;
+        }
       }
     }
     
@@ -755,12 +730,12 @@ cvsfs_get_attr (struct dentry * dentry,
 {
   struct cvsfs_directory *dir;
   char buf[CVSFS_MAX_LINE];
-  struct cvsfs_dirlist_node *file;
+  struct cvsfs_dir_entry *file;
   char name[CVSFS_MAX_LINE];
   char *version;
   int size;
 
-  cvsfs_get_name (dentry->d_parent, buf);
+  cvsfs_get_name (dentry->d_parent, buf);	// parent directory
 
   size = dentry->d_name.len < (sizeof (name) - 1) ? dentry->d_name.len
                                                   : (sizeof (name) - 1);
@@ -773,17 +748,22 @@ cvsfs_get_attr (struct dentry * dentry,
     ++version;
     ++version;
   }
+  
+  // Actual:
+  // name    = file name
+  // version = version number (if any)
+  
 #ifdef __DEBUG__
   if (version == NULL)
     printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file %s\n", name);
   else
     printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file %s (version %s)\n", name, version);
 #endif
-  dir = cvsfs_cache_get (info, buf, version);
+  dir = cvsfs_cache_get_dir (info, buf, version);
 
   if (!dir)
   {
-    printk (KERN_ERR "cvsfs: cvsfs_get_attr - cvsfs_cache_get failed !\n");
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - cvsfs_cache_get_dir failed !\n");
 
     return -1;
   }
@@ -793,48 +773,42 @@ cvsfs_get_attr (struct dentry * dentry,
   else
     printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - search file %s (version %s)\n", name, version);
 #endif
-  for (file = dir->head; file != NULL; file = file->next)
-  {
-#ifdef __DEBUG__
-    if (file->entry.version == NULL)
-      printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - scan file %s\n", file->entry.name);
-    else
-      printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - scan file %s (version %s)\n", file->entry.name, file->entry.version);
-#endif
-    if (strcmp (name, file->entry.name) == 0)
-      if ((version == NULL) || (file->entry.version == NULL) ||
-          (strcmp (file->entry.version, version) == 0))
-        break;
-  }
+
+  file = cvsfs_cache_get_file (info, dir, name, version);
 
   if (!file)
   {
-    printk (KERN_ERR "cvsfs: cvsfs_get_attr - file not found in parent dir cache !\n");
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file not found in parent dir cache !\n");
 
     return -1;
   }
 
-  fattr->f_mode = file->entry.mode;
-  fattr->f_size = file->entry.size;
-  fattr->f_blksize = file->entry.blocksize;
-  fattr->f_blocks = file->entry.blocks;
-  fattr->f_nlink = file->entry.nlink;
-  fattr->f_mtime = file->entry.date;     // was: CURRENT_TIME;
+  fattr->f_mode = file->mode;
+  fattr->f_size = file->size;
+  fattr->f_blksize = file->blocksize;
+  fattr->f_blocks = file->blocks;
+  fattr->f_nlink = file->nlink;
+  fattr->f_mtime = file->date;     // was: CURRENT_TIME;
   fattr->f_uid = info->mnt.uid;
   fattr->f_gid = info->mnt.gid;
   fattr->f_info.version = NULL;
-  if (file->entry.version != NULL)
+  if (file->version != NULL)
   {
-    fattr->f_info.version = kmalloc (strlen (file->entry.version) + 1, GFP_KERNEL);
+    fattr->f_info.version = kmalloc (strlen (file->version) + 1, GFP_KERNEL);
     if (fattr->f_info.version == NULL)
     {
       printk (KERN_ERR "cvsfs: cvsfs_get_attr - memory squeeze !\n");
       
       return -1;
     }
-    strcpy (fattr->f_info.version, file->entry.version);
+    strcpy (fattr->f_info.version, file->version);
   }
-
+#ifdef __DEBUG__
+  if (version == NULL)
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file %s found, attrib = %04o\n", name, fattr->f_mode);
+  else
+    printk (KERN_DEBUG "cvsfs: cvsfs_get_attr - file %s (version %s), attrib = %04o\n", name, version, fattr->f_mode);
+#endif
   return 0;
 }
 
