@@ -201,7 +201,10 @@ cvsfs_remove_superblock (struct cvsfs_sb_info *sb)
 
   /* unchain it from list */
   if (sb->prev == NULL)
+  {
     cvsfs_root = sb->next;
+    cvsfs_root->prev = NULL;	/* remove dangling pointer to old first sb */
+  }
   else
     sb->prev = sb->next;
 
@@ -302,16 +305,16 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
               cvsfs_add_superblock (info);	/* add to managed list of superblocks */
 	    
 #ifdef __DEBUG__
-              printk (KERN_DEBUG "cvsfs: read_super - root dentry allocated.\n");
+              printk (KERN_DEBUG "cvsfs(%d): read_super - root dentry allocated.\n", info->id);
 #endif
 	      if (cvsfs_procfs_user_init (info) == 0)
 	      {
 #ifdef __DEBUG__
-                printk (KERN_DEBUG "cvsfs: read_super - init user procfs completed.\n");
+                printk (KERN_DEBUG "cvsfs(%d): read_super - init user procfs completed.\n", info->id);
 #endif
 	        cvsfs_devfs_user_init (info);
 
-	        printk (KERN_INFO "cvsfs: project '//%s%s/%s' mounted\n", 
+	        printk (KERN_INFO "cvsfs(%d): project '//%s%s/%s' mounted\n", info->id,
 	 	        info->connection.server, info->connection.root, info->connection.project);
 
                 return sb;
@@ -349,26 +352,27 @@ static void
 cvsfs_put_super (struct super_block * sb)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+  int id = info->id;
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: put_super - '%s' unmounted\n", info->mount.mountpoint);
+  printk (KERN_DEBUG "cvsfs(%d): put_super - '%s' unmounted\n", id, info->mount.mountpoint);
 #endif
 
   cvsfs_devfs_user_cleanup (info);
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: put_super - devfs shut down\n");
+  printk (KERN_DEBUG "cvsfs(%d): put_super - devfs shut down\n", id);
 #endif
 
   cvsfs_procfs_user_cleanup (info);
 
 #ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs: put_super - procfs shut down\n");
+  printk (KERN_DEBUG "cvsfs(%d): put_super - procfs shut down\n", id);
 #endif
 
   cvsfs_remove_superblock (info);
 
-  printk (KERN_INFO "cvsfs: project '//%s%s/%s' unmounted\n",
+  printk (KERN_INFO "cvsfs(%d): project '//%s%s/%s' unmounted\n", id,
 	  info->connection.server, info->connection.root, info->connection.project);
 
   kfree (info->proc.view);
@@ -600,6 +604,7 @@ cvsfs_parse_options (struct cvsfs_sb_info * info, void * opts)
     }
   }
 
+  /* apply default values if notgiven by the user */
   if (info->connection.server == NULL)
     info->connection.server = strdup ("127.0.0.1");
 
