@@ -1,3 +1,10 @@
+2001-11-21  Johan Rydberg  <johan@rydberg.com>
+
+	* cvsmount/Makefile.am (install-exec-local): Force creation
+	of symlink.
+	* cvsmount/Makefile.in: Regenerate.
+	* configure: Regenerate.
+
 2001-11-21  Petric Frank  <pfrank@gmx.de>
 	* cvsmnt/main.c (parse_args): use getopt_long instead of getopt.
 	* all: format code along with GNU coding standards.

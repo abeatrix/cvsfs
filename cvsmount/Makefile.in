@@ -306,7 +306,7 @@ maintainer-clean
 
 
 install-exec-local:
-	ln -s $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
+	ln -fs $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -4,4 +4,4 @@ bin_PROGRAMS = cvsmount
 cvsmount_SOURCES = main.c
 
 install-exec-local:
-	ln -s $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
+	ln -fs $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
