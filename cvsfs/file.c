@@ -15,6 +15,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "cvsfs_config.h"
 #include "file.h"
 
 #include <linux/version.h>

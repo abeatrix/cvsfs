@@ -15,6 +15,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "cvsfs_config.h"
 #include "inode.h"
 
 #include <linux/version.h>
@@ -128,6 +129,7 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
   struct inode		*inode;
   struct cvsfs_sb_info	*info;
   struct cvsfs_fattr	root;
+  struct socket		*sock;
 
   printk (KERN_DEBUG "cvsfs: cvsfs_read_super\n");
 
@@ -157,19 +159,21 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
   info->mnt.dir_mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH | S_IFDIR;
   info->mnt.uid = current->uid;
   info->mnt.gid = current->gid;
-  info->sock = NULL;
+//  info->sock = NULL;
   init_MUTEX (&info->sem);
 
   if (cvsfs_parse_options (info, data) < 0)
     printk (KERN_ERR "cvsfs read_super: invalid options\n");
   else
   {
-    if (cvsfs_connect (info, 1) < 0)
+    sock = NULL;
+      
+    if (cvsfs_connect (&sock, info, 1) < 0)
       printk (KERN_ERR "cvsfs read_super: could not connect to %u.%u.%u.%u\n",
-                       info->address.sin_addr.s_addr & 0xff,
-                       (info->address.sin_addr.s_addr >> 8) & 0xff,
-                       (info->address.sin_addr.s_addr >> 16) & 0xff,
-                       (info->address.sin_addr.s_addr >> 24) & 0xff);
+              info->address.sin_addr.s_addr & 0xff,
+              (info->address.sin_addr.s_addr >> 8) & 0xff,
+              (info->address.sin_addr.s_addr >> 16) & 0xff,
+              (info->address.sin_addr.s_addr >> 24) & 0xff);
     else
     {
       cvsfs_init_root_dirent (info, &root);
@@ -210,7 +214,7 @@ static void cvsfs_put_super (struct super_block * sb)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
 
-  cvsfs_disconnect (info);
+//  cvsfs_disconnect (&(info->sock), info);
   cvsfs_cache_empty ();
   kfree (info);
 }

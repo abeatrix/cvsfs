@@ -48,9 +48,8 @@ The build process expects the kernel source is installed at /usr/src/linux
 
 Limitations:
 ------------
-This tool actually only retrieves the file names and directories. To assign
-the sizes and dates i have to make some more investigation (support is highly
-welcome).
+This tool actually only retrieves the file names and directories at the HEAD
+branch. Reading of files is supported (hopefully).
 There are some timing limits inside the kernel module for responses from
 the cvs-pserver. They may exceed for slow remote machines. Have a look to
 cvsfs/proc.c to change this limitation.

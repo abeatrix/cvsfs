@@ -1,2 +1,6 @@
 2001/06/18:
 * initial release
+
+2001/11/07:
+* retrieves file size and date
+* ability to read files

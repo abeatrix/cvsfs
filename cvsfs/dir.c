@@ -15,6 +15,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "cvsfs_config.h"
 #include "dir.h"
 
 #include <linux/ctype.h>
@@ -23,6 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/smp_lock.h>
+#include <linux/slab.h>
 
 //#include <asm/uaccess.h>
 //#include <asm/system.h>

@@ -51,7 +51,7 @@ struct cvsfs_sb_info
   char				user[CVSFS_MAX_USER];
   char				pass[CVSFS_MAX_PASS];
   struct semaphore		sem;
-  struct socket			*sock;
+//  struct socket			*sock;
 };
 
 struct cvsfs_fattr

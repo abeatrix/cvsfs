@@ -31,6 +31,7 @@ struct cvsfs_dir_entry
   nlink_t	nlink;
   unsigned long	blocksize;
   unsigned long	blocks;
+  time_t	date;
 };
 
 struct cvsfs_dirlist_node

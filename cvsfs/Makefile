@@ -18,11 +18,12 @@ CXX = gcc
 LD = ld
 RM = rm -f
 
-CFLAGS = -O3 -Wall -DMODULE -D__KERNEL__ -DLINUX -fomit-frame-pointer -I/usr/src/linux/include
+KERNEL_VERSION = $(shell uname -r)
+
+CFLAGS = -O3 -Wall -DMODULE -D__KERNEL__ -DLINUX -fomit-frame-pointer -I/lib/modules/$(KERNEL_VERSION)/build/include
 CXXFLAGS =
 LDFLAGS = -m elf_i386 -r
 
-KERNEL_VERSION = $(shell uname -r)
 
 all:		$(RESULT_FILE)
 
