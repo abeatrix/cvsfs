@@ -30,7 +30,7 @@
 #include "util.h"
 #include "../include/cvsfs_ioctl.h"
 
-//#define __DEBUG__
+#define __DEBUG__
 
 
 
@@ -105,9 +105,7 @@ cvsfs_file_open (struct inode * inode, struct file * file)
 #endif
     ret = cvsfs_truncate_file (info, namebuf);
 
-    dentry->d_time = 1;		/* file attributes dirty - reread them */
-    if (dentry->d_parent)
-      dentry->d_parent->d_time = 1;
+    dentry->d_time = 0;		/* file attributes dirty - reread them */
   }
 
 #ifdef __DEBUG__    
@@ -196,9 +194,7 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   if (ret < 0)
     return ret;
 
-  dentry->d_time = 1;	// system should evaluate the actual file attributes
-  if (dentry->d_parent)
-    dentry->d_parent->d_time = 1;
+  dentry->d_time = 0;	// system should evaluate the actual file attributes
 
   return count;
 }
@@ -264,7 +260,7 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
       if ((err = cvsfs_ioctl (info, command, fullnamebuf, &retval)) < 0)
         break;
 
-      dentry->d_time = 1;	/* mark dentry dirty - request update */
+      dentry->d_time = 0;	/* mark dentry dirty - request update */
       break;
 
     case CVSFS_GET_VERSION:	/* obtain the revision number */
@@ -325,7 +321,7 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
 	copy_from_user (&fullnamebuf[strlen (namebuf) + 2], data.string, size);
         err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
       }
-      dentry->d_time = 1;	/* mark dentry dirty - request update */
+      dentry->d_time = 0;	/* mark dentry dirty - request update */
       break;
       
     default:
@@ -394,7 +390,7 @@ static int cvsfs_file_setattr (struct dentry * dentry, struct iattr * attr)
   if (attr->ia_valid & ATTR_MODE)
     ret = cvsfs_change_attr (info, buf, attr->ia_mode);
 
-  dentry->d_time = 1;                   /* mark dentry invalid */
+  dentry->d_time = 0;                   /* mark dentry invalid */
 							      
   return ret;
 }

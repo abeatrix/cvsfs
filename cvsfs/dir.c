@@ -33,7 +33,7 @@
 #include "proc.h"
 #include "util.h"
 
-//#define __DEBUG__
+#define __DEBUG__
 
 
 /* forward references - directory operations */
@@ -124,42 +124,17 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 
     default:
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs(%d): readdir - get file #%lli, parent dirty: %lu\n", info->id, f->f_pos, dentry->d_time);
+      printk (KERN_DEBUG "cvsfs(%d): readdir - get file #%lli\n", info->id, f->f_pos);
 #endif
       /* ask cvsfs daemon to get the directory contents */
       name = cvsfs_get_file (info, buf, f->f_pos);
       if (!name)
-      {
-        dentry->d_time = 0;	/* all read - parent dir clean */
-      
         return -ENOENT;	/* there are no files in this directory */
-      }
 
       qname.name = name;
       qname.len = strlen (name);
 
-//      ino = find_inode_number (dentry, &qname);
-      ino = 0;
-      qname.hash = full_name_hash (qname.name, qname.len);
-      item = d_lookup (dentry, &qname);
-      if (item)
-      {
-#ifdef __DEBUG__
-        printk (KERN_DEBUG "cvsfs(%d): readdir - hash lookup file %s, invalid = %lu\n", info->id, item->d_name.name, item->d_time);
-#endif
-        if (item->d_inode)
-	  ino = item->d_inode->i_ino;
-
-        if (dentry->d_time != 0)
-        {
-#ifdef __DEBUG__
-          printk (KERN_DEBUG "cvsfs(%d): readdir - parent dir dirty - set this file also dirty\n", info->id);
-#endif
-	  item->d_time = 1;
-	}  
-	dput (item);
-      }
-      
+      ino = find_inode_number (dentry, &qname);
       if (!ino)
 #ifdef __DEBUG__
       {
@@ -222,7 +197,8 @@ static int cvsfs_create (struct inode * dir, struct dentry * dentry, int mode)
     
   dentry->d_op = &cvsfs_dentry_operations;
   dir->i_nlink++;
-  inode->i_nlink = 2;  
+  inode->i_nlink = 2;
+  dentry->d_time = 1;		/* dentry valid */
 
   if (dir->i_mode & S_ISGID)
     inode->i_mode |= S_ISGID;
@@ -255,10 +231,7 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
   inode = dentry->d_inode;
   inode->i_nlink = 0;
   inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
-//  dir->i_nlink--;
-  if (dentry->d_parent != NULL)
-    dentry->d_parent->d_time = 1;	/* parent dentry invalid - re-read it */
-  dentry->d_time = 1;			/* dentry invalid - re-read it */
+  dentry->d_time = 0;			/* dentry invalid - re-read it */
 
   d_delete (dentry);
     
@@ -311,7 +284,7 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
 #endif
 
     dentry->d_op = &cvsfs_dentry_operations;
-    dentry->d_time = 0;
+    dentry->d_time = 1;			/* dentry valid */
 
     d_add (dentry, inode);
   }
@@ -346,9 +319,9 @@ static int cvsfs_mkdir (struct inode * dir, struct dentry * dentry, int mode)
     return -EACCES;
     
   dentry->d_op = &cvsfs_dentry_operations;
-  dentry->d_time = 0;			/* mark dentry values valid */
+  dentry->d_time = 1;			/* mark dentry values valid */
   dir->i_nlink++;
-  inode->i_nlink = 2;  
+  inode->i_nlink = 2;
 
   if (dir->i_mode & S_ISGID)
     inode->i_mode |= S_ISGID;
@@ -386,8 +359,7 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
   inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
   dir->i_nlink--;
 
-  if (dentry->d_parent)
-    dentry->d_parent->d_time = 1;
+  dentry->d_time = 0;		/* dentry invalid */
 
   d_delete (dentry);
   
@@ -433,13 +405,9 @@ static int cvsfs_rename (struct inode * old_dir, struct dentry * old_dentry,
   retval = cvsfs_move (info, old_buf, new_buf);
 
   old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME;
-  old_dentry->d_time = 1;
-  if (old_dentry->d_parent)
-    old_dentry->d_parent->d_time = 1;
+  old_dentry->d_time = 0;				/* dentry invalid - re-read */
   new_dir->i_ctime = new_dir->i_mtime = CURRENT_TIME;
-  new_dentry->d_time = 1;
-  if (new_dentry->d_parent)
-    new_dentry->d_parent->d_time = 1;
+  new_dentry->d_time = 0;				/* dentry invalid - re-read */
   
   return retval;
 }
@@ -478,10 +446,6 @@ static int cvsfs_setattr (struct dentry * dentry, struct iattr * attr)
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
     return -ENOMEM;
 
-#ifdef __DEBUG__
-  printk (KERN_DEBUG "cvsfs(%d): setattr - file %s to mode 0x%x\n", info->id, buf, attr->ia_mode);
-#endif
-
   version = inode->u.generic_ip;
   if ((version != NULL) && (strlen (version) > 0))
   {                                             /* append version - if any */
@@ -491,11 +455,16 @@ static int cvsfs_setattr (struct dentry * dentry, struct iattr * attr)
     strcat (buf, "@@");
     strcat (buf, version);
   }
-  
+
+#ifdef __DEBUG__
+  if (attr->ia_valid & ATTR_MODE)
+    printk (KERN_DEBUG "cvsfs(%d): setattr - file %s to mode 0x%x\n", info->id, buf, attr->ia_mode);
+#endif
+
   if (attr->ia_valid & ATTR_MODE)
     ret = cvsfs_change_attr (info, buf, attr->ia_mode);
 
-  dentry->d_time = 1;			/* mark dentry invalid */
+  dentry->d_time = 0;			/* mark dentry invalid - trigger re-read */
 
   return ret;
 }
@@ -534,7 +503,7 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
   {
     lock_kernel ();
 
-    if (dentry->d_time != 0)	/* dentry values valid ? */
+    if (dentry->d_time == 0)	/* dentry values valid ? */
       valid = 0;
 
     if (is_bad_inode (inode))
