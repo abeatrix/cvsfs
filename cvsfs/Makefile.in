@@ -325,7 +325,7 @@ maintainer-clean-generic clean mostlyclean distclean maintainer-clean
 
 
 install-exec-hook:
-	depmod -a
+	/sbin/depmod -a
 
 install-exec-local:
 	../makedevs

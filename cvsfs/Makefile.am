@@ -20,7 +20,7 @@ noinst_HEADERS = cvsfs_config.h devfs.h dir.h \
 	file.h inode.h procfs.h proc.h superblock.h util.h
 
 install-exec-hook:
-	depmod -a
+	/sbin/depmod -a
 
 install-exec-local:
 	../makedevs
