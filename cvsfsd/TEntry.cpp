@@ -23,6 +23,13 @@
 
 
 
+TEntry::TEntry (const std::string & name)
+: fName (name), fLayer (-1), fReadOnly (false)
+{
+}
+
+
+
 TEntry::~TEntry ()
 {
 }

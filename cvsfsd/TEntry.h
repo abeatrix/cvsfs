@@ -34,21 +34,24 @@ class TEntry
       VersionedFileEntry
     } EntryType;
 
-    typedef enum
-    {
-      Remote,
-      Local,
-    } EntrySource;
+//    typedef enum
+//    {
+//      Remote,
+//      Local,
+//    } EntrySource;
 
-    TEntry (const std::string & name) : fName (name), fSource (Remote) {}
+    TEntry (const std::string &);
     virtual ~TEntry ();
 
     std::ostream & operator << (std::ostream &) const;
 
-    const std::string & GetName () const { return fName; }
-    EntrySource GetSource () const { return fSource; }
+    virtual TEntry * Clone () const = 0;
 
-    void SetSource (EntrySource source) { fSource = source; }
+    const std::string & GetName () const { return fName; }
+    int GetLayer () const { return fLayer; }
+
+    void SetLayer (int layer) { fLayer = layer; }
+    void SetReadOnly () { fReadOnly = true; }
 
     virtual EntryType isA () const = 0;
     virtual bool ValidData () const = 0;
@@ -57,7 +60,8 @@ class TEntry
     virtual void streamData (std::ostream &) const = 0;
 
     std::string fName;
-    EntrySource	fSource;
+    int		fLayer;
+    bool	fReadOnly;
 };
 
 

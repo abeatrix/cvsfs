@@ -28,7 +28,10 @@ class TDirectory : public TEntry
 {
   public:
     TDirectory (const std::string &);
+    TDirectory (const TDirectory &);
     virtual ~TDirectory ();
+
+    virtual TEntry * Clone () const;
 
     TEntry * FindEntry (const std::string &) const;
     TEntry * GetEntry (int) const;

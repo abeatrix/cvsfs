@@ -31,6 +31,17 @@ TDirectory::TDirectory (const std::string & name)
 
 
 
+TDirectory::TDirectory (const TDirectory & clone)
+: TEntry (clone), fValidData (clone.fValidData)
+{
+  MapType::const_iterator iter;
+
+  for (iter = clone.fContents.begin (); iter != clone.fContents.end (); ++iter)
+    AddEntry ((*iter).second->Clone ());
+}
+
+
+
 TDirectory::~TDirectory ()
 {
   MapType::iterator iter;
@@ -41,13 +52,39 @@ TDirectory::~TDirectory ()
 
 
 
+TEntry * TDirectory::Clone () const
+{
+  return new TDirectory (*this);
+}
+
+
+
 TEntry * TDirectory::FindEntry (const std::string & name) const
 {
   MapType::const_iterator iter;
 
-  iter = fContents.find (name);
-  if (iter != fContents.end ())
-    return (*iter).second;
+  std::string::size_type pos = name.find ('/');
+  if (pos == std::string::npos)
+  {
+    iter = fContents.find (name);
+    if (iter != fContents.end ())
+      return (*iter).second;
+  }
+  else
+  {
+    std::string dir = name;
+    dir.erase (pos);
+
+    iter = fContents.find (dir);
+    if ((iter != fContents.end ()) &&
+        ((*iter).second->isA () == TEntry::DirEntry))
+    {
+      dir = name;
+      dir.erase (0, pos + 1);
+
+      return static_cast<TDirectory *> ((*iter).second)->FindEntry (dir);
+    }
+  }
 
   return 0;
 }
@@ -102,5 +139,5 @@ void TDirectory::SetData (const TFileData & data)
 
 void TDirectory::streamData (std::ostream & str) const
 {
-  fFileData.streamData (str, S_IFDIR, false);
+  fFileData.streamData (str, S_IFDIR, fReadOnly);
 }

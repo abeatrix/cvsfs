@@ -29,12 +29,20 @@
 TVersionedFile::TVersionedFile (const std::string & name, const std::string & version)
 : TEntry (name), fHeadVersion (version), fDataValid (false)
 {
+  SetReadOnly ();
 }
 
 
 
 TVersionedFile::~TVersionedFile ()
 {
+}
+
+
+
+TEntry * TVersionedFile::Clone () const
+{
+  return new TVersionedFile (*this);
 }
 
 
@@ -64,7 +72,11 @@ void TVersionedFile::AddVersion (const std::string & version, const TFileData & 
 {
   TFile item (GetName (), version);
 
+  item.SetLayer (fLayer);
   item.SetData (data);
+
+  if (fReadOnly)
+    item.SetReadOnly ();
 
   fFileVersions.AddVersion (version, item);
 

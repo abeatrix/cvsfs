@@ -34,6 +34,8 @@ class TVersionedFile : public TEntry
     TVersionedFile (const std::string &, const std::string &);
     virtual ~TVersionedFile ();
 
+    virtual TEntry * Clone () const;
+
     const std::string & GetHeadVersion () const { return fHeadVersion; }
 
     const TFile * FindVersion (const std::string &) const;

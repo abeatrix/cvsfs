@@ -39,6 +39,13 @@ TFile::~TFile ()
 
 
 
+TEntry * TFile::Clone () const
+{
+  return new TFile (*this);
+}
+
+
+
 TEntry::EntryType TFile::isA () const
 {
   return TEntry::FileEntry;
@@ -57,7 +64,7 @@ void TFile::SetData (const TFileData & data)
 
 void TFile::streamData (std::ostream & str) const
 {
-  fData.streamData (str, S_IFREG, fSource == TEntry::Remote);
+  fData.streamData (str, S_IFREG, fReadOnly);
   if (fVersion.length () > 0)
     str << " " << fVersion;
 }

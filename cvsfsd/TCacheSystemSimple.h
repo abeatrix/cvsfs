@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TFile.h  -  description
+                          TCacheSystemSimple.h  -  description
                              -------------------
-    begin                : Thu Jun 14 00:15:41 CEST 2002
+    begin                : Tue Aug 27 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -15,42 +15,31 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef __TFILE_H__
-#define __TFILE_H__
+#ifndef __TCACHESYSTEMSIMPLE_H__
+#define __TCACHESYSTEMSIMPLE_H__
 
-#include <string>
-#include <map>
-#include "TEntry.h"
-
-// forward references
-class TFileData;
+#include "TCacheSystem.h"
 
 
 
-class TFile : public TEntry
+class TCacheSystemSimple : public TCacheSystem
 {
   public:
-    TFile (const std::string &, const std::string &);
-    virtual ~TFile ();
+    TCacheSystemSimple (const std::string &, bool);
 
-    virtual TEntry * Clone () const;
+    virtual bool LoadTree (TDirectory &) const;
 
-    const std::string & GetVersion () const { return fVersion; }
-    const TFileData & GetData () const { return fData; }
-    void SetVersion (const std::string & version) { fVersion = version; }
+    virtual bool HaveFile (const std::string &) const;
+    virtual bool HaveDirectory (const std::string &) const;
+    virtual bool CreateDirectory (const std::string &, int) const;
+    virtual bool CreateFile (const std::string &, int) const;
+    virtual bool DeleteDirectory (const std::string &) const;
+    virtual bool DeleteFile (const std::string &) const;
 
-    virtual TEntry::EntryType isA () const;
+    virtual bool FileAttribute (const std::string &, TFileData &) const;
 
-    virtual bool ValidData () const { return fDataValid; }
-
-    void SetData (const TFileData & data);
-
-  private:
-    virtual void streamData (std::ostream &) const;
-
-    std::string		fVersion;
-    bool		fDataValid;
-    TFileData		fData;
+    virtual std::ifstream * In (const std::string &, int = 0) const;
+    virtual std::ofstream * Out (const std::string &, int = 0) const;
 };
 
 
