@@ -1,5 +1,6 @@
 2002-09-19  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.8
+	* include/cvsfs_errno.h: new - defines additional error codes required
 
 2002-09-16  Petric Frank  <pfrank@gmx.de>
 	* cvsfs/dir.c, file.c: invert meaning of 'dirty'-flag in dentry->d_time
