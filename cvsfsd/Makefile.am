@@ -19,10 +19,10 @@ cvsfsd_SOURCES = main.cpp TCacheManager.cpp TCacheSystem.cpp \
 	TModuleActionIoctl.cpp TModuleActionMkdir.cpp TModuleActionMkfile.cpp \
 	TModuleActionMove.cpp TModuleActionPut.cpp TModuleActionQuit.cpp \
 	TModuleActionRmdir.cpp TModuleActionRmfile.cpp \
-	TModuleActionTruncfile.cpp TModuleServer.cpp TMountParameters.cpp \
-	TSocket.cpp TSyslog.cpp TSyslogFile.cpp TSyslogStream.cpp \
-	TSyslogStreambuf.cpp TVersionedFile.cpp XException.cpp \
-	XPserverTimeout.cpp
+	TModuleActionSetattr.cpp TModuleActionTruncfile.cpp TModuleServer.cpp \
+	TMountParameters.cpp TSocket.cpp TSyslog.cpp TSyslogFile.cpp \
+	TSyslogStream.cpp TSyslogStreambuf.cpp TVersionedFile.cpp \
+	XException.cpp XPserverTimeout.cpp
 
 noinst_HEADERS = TCacheManager.h TCacheSystem.h TCacheSystemCheckedout.h \
 	TCacheSystemSimple.h TCacheSystemVersioned.h TConnectedSocket.h \
@@ -32,7 +32,7 @@ noinst_HEADERS = TCacheManager.h TCacheSystem.h TCacheSystemCheckedout.h \
 	TModuleActionAttr.h TModuleActionDir.h TModuleActionGet.h \
 	TModuleActionIoctl.h TModuleActionMkdir.h TModuleActionMkfile.h \
 	TModuleActionMove.h TModuleActionPut.h TModuleActionQuit.h \
-	TModuleActionRmdir.h TModuleActionRmfile.h TModuleActionTruncfile.h \
-	TModuleServer.h TMountParameters.h TSocket.h TSyslog.h TSyslogFile.h \
-	TSyslogStream.h TSyslogStreambuf.h TVersionedFile.h XException.h \
-	XPserverTimeout.h
+	TModuleActionRmdir.h TModuleActionRmfile.h TModuleActionSetattr.h \
+	TModuleActionTruncfile.h TModuleServer.h TMountParameters.h TSocket.h \
+	TSyslog.h TSyslogFile.h TSyslogStream.h TSyslogStreambuf.h \
+	TVersionedFile.h XException.h XPserverTimeout.h

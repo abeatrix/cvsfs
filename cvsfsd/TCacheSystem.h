@@ -49,6 +49,7 @@ class TCacheSystem
     virtual bool Move (const std::string &, const TCacheSystem &, const std::string &) const = 0;
 
     virtual bool FileAttribute (const std::string &, TFileData &) const = 0;
+    virtual bool SetAttribute (const std::string &, TFileData &) const = 0;
 
     virtual std::ifstream * In (const std::string &, std::ios::openmode = std::ios::openmode(0)) const = 0;
     virtual std::ofstream * Out (const std::string &, std::ios::openmode = std::ios::openmode(0)) const = 0;
@@ -64,6 +65,7 @@ class TCacheSystem
     bool FileDelete (const std::string &) const;
     bool MoveItem (const std::string &, const TCacheSystem &, const std::string &) const;
     bool FileAttribs (const std::string &, TFileData &, bool &) const;
+    bool SetAttribs (const std::string &, TFileData &) const;
 
     virtual void FullPath (const std::string &, std::string &) const;
     virtual TEntry * AddDir (TDirectory &, const std::string &, TFileData &) const;

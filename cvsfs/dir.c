@@ -55,6 +55,7 @@ static int cvsfs_mkdir (struct inode *, struct dentry *, int);
 static int cvsfs_rmdir (struct inode *, struct dentry *);
 static int cvsfs_rename (struct inode *, struct dentry *, struct inode *, struct dentry *);
 //static int cvsfs_dir_permission (struct inode *, int);
+static int cvsfs_setattr (struct dentry *, struct iattr *);
 
 struct inode_operations cvsfs_dir_inode_operations = {
 						       create:		cvsfs_create,
@@ -64,6 +65,7 @@ struct inode_operations cvsfs_dir_inode_operations = {
 						       rmdir:		cvsfs_rmdir,
 						       rename:		cvsfs_rename,
 //						       permission:	cvsfs_dir_permission,
+						       setattr:		cvsfs_setattr,
 						     };
 
 
@@ -394,10 +396,10 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
 
 
 
-/* rename a file or directory                                                 */
-/* this function is only called when a user program calls the rename system   */
-/* call. The shell do the renaming at higher level - it does not require      */
-/* this function.                                                             */
+/* rename a file or directory                                               */
+/* this function is only called when a user program calls the rename system */
+/* call. The shell (for example: bash) do the renaming at higher level - it */
+/* does not require this function.                                          */
 static int cvsfs_rename (struct inode * old_dir, struct dentry * old_dentry,
 			 struct inode * new_dir, struct dentry * new_dentry)
 {
@@ -454,6 +456,52 @@ static int cvsfs_rename (struct inode * old_dir, struct dentry * old_dentry,
 
 
 
+static int cvsfs_setattr (struct dentry * dentry, struct iattr * attr)
+{
+  struct inode *inode = dentry->d_inode;
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) inode->i_sb->u.generic_sbp;
+  char buf[CVSFS_MAX_PATH];
+  char *version;
+  int ret = 0;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): setattr - entry\n", info->id);
+#endif
+
+  if (attr->ia_valid & ATTR_SIZE)
+  {
+    ret = vmtruncate (inode, attr->ia_size);
+    if (ret)
+      return ret;
+  }
+
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
+    return -ENOMEM;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): setattr - file %s to mode 0x%x\n", info->id, buf, attr->ia_mode);
+#endif
+
+  version = inode->u.generic_ip;
+  if ((version != NULL) && (strlen (version) > 0))
+  {                                             /* append version - if any */
+    if (sizeof (buf) < (strlen (buf) + strlen (version) + 3))
+      return -ENOMEM;
+		
+    strcat (buf, "@@");
+    strcat (buf, version);
+  }
+  
+  if (attr->ia_valid & ATTR_MODE)
+    ret = cvsfs_change_attr (info, buf, attr->ia_mode);
+
+  dentry->d_time = 1;			/* mark dentry invalid */
+
+  return ret;
+}
+
+
+
 /* check whether the entry is valid anymore */
 static int
 cvsfs_lookup_validate (struct dentry * dentry, int flags)
@@ -462,7 +510,7 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
 #ifdef __DEBUG__
   struct super_block *sb = 0;
   struct cvsfs_sb_info *info = 0;
-  char buf[128];
+  char buf[CVSFS_MAX_PATH];
 #endif
   int valid = 1;
 

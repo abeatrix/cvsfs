@@ -127,6 +127,13 @@ bool TCacheSystemVersioned::FileAttribute (const std::string & path, TFileData &
 
 
 
+bool TCacheSystemVersioned::SetAttribute (const std::string & path, TFileData & data) const
+{
+  return false;		// not allowed for checked-in files
+}
+
+
+
 std::ifstream * TCacheSystemVersioned::In (const std::string & path, std::ios::openmode mode) const
 {
   // Prerequisite: File must exist

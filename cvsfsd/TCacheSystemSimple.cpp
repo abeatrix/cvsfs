@@ -101,6 +101,13 @@ bool TCacheSystemSimple::FileAttribute (const std::string & path, TFileData & da
 
 
 
+bool TCacheSystemSimple::SetAttribute (const std::string & path, TFileData & data) const
+{
+  return SetAttribs (path, data);
+}
+
+
+
 std::ifstream * TCacheSystemSimple::In (const std::string & path, std::ios::openmode mode) const
 {
   // Prerequisite: File must exist

@@ -47,6 +47,7 @@ int cvsfs_remove_file (struct cvsfs_sb_info *, char *);
 int cvsfs_truncate_file (struct cvsfs_sb_info *, char *);
 int cvsfs_move (struct cvsfs_sb_info *, char *, char *);
 int cvsfs_ioctl (struct cvsfs_sb_info *, int, char *, char **);
+int cvsfs_change_attr (struct cvsfs_sb_info *, char *, umode_t);
 
 /* functions required by procfs interface */
 int cvsfs_get_view (struct cvsfs_sb_info *, char **);

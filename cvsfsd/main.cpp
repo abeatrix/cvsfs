@@ -33,6 +33,7 @@
 #include "TModuleActionTruncfile.h"
 #include "TModuleActionMove.h"
 #include "TModuleActionIoctl.h"
+#include "TModuleActionSetattr.h"
 #include "TModuleActionQuit.h"
 #include "TCvsInterfacePserver.h"
 #include "TSyslog.h"
@@ -157,6 +158,7 @@ main(int argc, char *argv[])
     server->AddAction ("truncfile", new TModuleActionTruncfile);
     server->AddAction ("move", new TModuleActionMove);
     server->AddAction ("ioctl", new TModuleActionIoctl);
+    server->AddAction ("setattr", new TModuleActionSetattr);
 
     log->info << "Starting mount daemon (" << argv[1] << ") ..." << std::endl;
 

@@ -48,6 +48,7 @@ class TCvsInterfacePserver : public TCvsInterface
     virtual int RemoveFile (const std::string &, const std::string &);
     virtual int TruncateFile (const std::string &, const std::string &);
     virtual int Move (const std::string &, const std::string &, const std::string &);
+    virtual int SetAttr (const std::string &, const std::string &, int);
     virtual int Invalidate (const std::string &, const std::string &);
     virtual int GetLocation (const std::string &, const std::string &, std::string &);
     virtual int Checkout (const std::string &, const std::string &);

@@ -739,6 +739,59 @@ cvsfs_ioctl (struct cvsfs_sb_info * info, int action, char * parm, char ** retva
 
 
 
+/* this function asks the daemon to change a file attribute           */
+/* the request sent to the daemon has this layout:                    */
+/*   setattr <file name> <attribute>                                  */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> '\0'                                           */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_change_attr (struct cvsfs_sb_info * info, char * name, umode_t value)
+{
+  char * cmd;
+  char * ptr;
+  char * response;
+  char number[32];
+  int size;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): change_attr for %s to %x\n", info->id, name, value);
+#endif
+
+  sprintf (number, "%d", value);
+
+  size = 10 + strlen (number) + strlen (name);
+    
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  sprintf (cmd, "setattr %s %s", name, number);
+    
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): change_attr - send request -->%s\n", info->id, cmd);
+#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): change_attr - returned from daemon -->%s\n", info->id, response);
+#endif    
+
+  ret = simple_strtoul (response, &ptr, 0);
+  
+  kfree (response);
+  
+  return ret;
+}
+
+
+
 int
 cvsfs_get_view (struct cvsfs_sb_info * info, char ** data)
 {

@@ -58,6 +58,7 @@ class TCacheManager
     bool Move (size_type, const std::string &, size_type, const std::string &) const;
 
     bool FileAttribute (size_type, const std::string &, TFileData &) const;
+    bool SetAttribute (size_type, const std::string &, TFileData &) const;
 
     std::ifstream * In (size_type, const std::string &, std::ios::openmode = std::ios::openmode(0)) const;
     std::ofstream * Out (size_type, const std::string &, std::ios::openmode = std::ios::openmode(0)) const;

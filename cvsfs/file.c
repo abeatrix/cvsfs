@@ -52,9 +52,11 @@ struct file_operations cvsfs_file_operations = {
 
 /* forward references - file operations */
 static int cvsfs_file_permission (struct inode *, int);
+static int cvsfs_file_setattr (struct dentry *, struct iattr *);
 					
 struct inode_operations cvsfs_file_inode_operations = {
 							permission:	cvsfs_file_permission,
+							setattr:	cvsfs_file_setattr,
 						      };
 
 
@@ -349,6 +351,52 @@ cvsfs_file_permission (struct inode * inode, int mask)
 //    return -EACCES;
 
   return 0;
+}
+
+
+
+static int cvsfs_file_setattr (struct dentry * dentry, struct iattr * attr)
+{
+  struct inode *inode = dentry->d_inode;
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) inode->i_sb->u.generic_sbp;
+  char buf[CVSFS_MAX_PATH];
+  char *version;
+  int ret = 0;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): file_setattr - entry\n", info->id);
+#endif
+
+  if (attr->ia_valid & ATTR_SIZE)
+  {
+    ret = vmtruncate (inode, attr->ia_size);
+    if (ret)
+      return ret;
+  }
+
+  if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
+    return -ENOMEM;
+			  
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): file_setattr - file %s to mode 0x%x\n", info->id, buf, attr->ia_mode);
+#endif
+			    
+  version = inode->u.generic_ip;
+  if ((version != NULL) && (strlen (version) > 0))
+  {                                             /* append version - if any */
+    if (sizeof (buf) < (strlen (buf) + strlen (version) + 3))
+      return -ENOMEM;
+					    
+    strcat (buf, "@@");
+    strcat (buf, version);
+  }
+
+  if (attr->ia_valid & ATTR_MODE)
+    ret = cvsfs_change_attr (info, buf, attr->ia_mode);
+
+  dentry->d_time = 1;                   /* mark dentry invalid */
+							      
+  return ret;
 }
 
 

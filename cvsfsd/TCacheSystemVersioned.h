@@ -38,6 +38,7 @@ class TCacheSystemVersioned : public TCacheSystem
     virtual bool Move (const std::string &, const TCacheSystem &, const std::string &) const;
 
     virtual bool FileAttribute (const std::string &, TFileData &) const;
+    virtual bool SetAttribute (const std::string &, TFileData &) const;
 
     virtual std::ifstream * In (const std::string &, std::ios::openmode = std::ios::openmode(0)) const;
     virtual std::ofstream * Out (const std::string &, std::ios::openmode = std::ios::openmode(0)) const;

@@ -130,6 +130,18 @@ bool TCacheSystemCheckedout::FileAttribute (const std::string & path, TFileData 
 
 
 
+bool TCacheSystemCheckedout::SetAttribute (const std::string & path, TFileData & data) const
+{
+  std::string newpath;
+
+  if (!EvaluateFullName (path, newpath))
+    return false;
+
+  return SetAttribs (newpath, data);
+}
+
+
+
 void TCacheSystemCheckedout::FullPath (const std::string & path, std::string & fullpath) const
 {
   std::string newpath;

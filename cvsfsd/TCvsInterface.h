@@ -56,6 +56,7 @@ class TCvsInterface
     virtual int RemoveFile (const std::string &, const std::string &) = 0;
     virtual int TruncateFile (const std::string &, const std::string &) = 0;
     virtual int Move (const std::string &, const std::string &, const std::string &) = 0;
+    virtual int SetAttr (const std::string &, const std::string &, int) = 0;
     virtual int Invalidate (const std::string &, const std::string &) = 0;
     virtual int GetLocation (const std::string &, const std::string &, std::string &) = 0;
     virtual int Checkout (const std::string &, const std::string &) = 0;

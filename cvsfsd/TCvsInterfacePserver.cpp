@@ -15,7 +15,9 @@
  *                                                                         *
  ***************************************************************************/
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -635,6 +637,47 @@ int TCvsInterfacePserver::Move (const std::string & oldpath,
   oldentry = FindEntry (&fCvsDir, old_fullpath);
   if (oldentry)
     olddir->AddEntry (oldentry->Clone ());	// then bring it back to front
+
+  return 0;
+}
+
+
+
+int TCvsInterfacePserver::SetAttr (const std::string & path,
+				   const std::string & version,
+				   int attribute)
+{
+  if (!LoadTree ())
+    return EIO;
+
+  std::string fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    fullpath = path;
+    fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+    fullpath = fConnection.GetProject () + path;
+
+  TEntry *entry = FindEntry (fRootDir, fullpath);
+  if (!entry)
+    return ENOENT;
+
+  if (entry->GetLayer () == fRemote->GetLayer ())
+    return EROFS;
+
+  TFileData temp;
+
+  if (!fCacheManager.FileAttribute (entry->GetLayer (), fullpath, temp))
+    return EIO;
+
+  temp.SetAttribute (attribute);
+
+  if (!fCacheManager.SetAttribute (entry->GetLayer (), fullpath, temp))
+    return EIO;
+
+  entry->SetData (temp);
 
   return 0;
 }

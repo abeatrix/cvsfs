@@ -190,6 +190,16 @@ bool TCacheManager::FileAttribute (size_type cacheidx, const std::string & name,
 
 
 
+bool TCacheManager::SetAttribute (size_type cacheidx, const std::string & name, TFileData & data) const
+{
+  if ((cacheidx < 0) || (cacheidx >= fCaches.size ()))
+    return false;
+
+  return fCaches[cacheidx]->SetAttribute (name, data);
+}
+
+
+
 std::ifstream * TCacheManager::In (size_type cacheidx, const std::string & name, std::ios::openmode mode) const
 {
   if ((cacheidx < 0) || (cacheidx >= fCaches.size ()))

@@ -388,6 +388,27 @@ bool TCacheSystem::FileAttribs (const std::string & path, TFileData & data, bool
 
 
 
+bool TCacheSystem::SetAttribs (const std::string & path, TFileData & data) const
+{
+  std::string fullpath = fAbsoluteBase + "/" + path;
+  struct stat info;
+
+  chmod (fullpath.c_str (), data.GetAttribute ());
+
+  if (lstat (fullpath.c_str (), &info) != 0)
+    return false;
+
+  data.SetSize (info.st_size);
+  data.SetAttribute (info.st_mode);
+  data.SetAtime (info.st_atime);
+  data.SetMtime (info.st_mtime);
+  data.SetCtime (info.st_ctime);
+
+  return true;
+}
+
+
+
 void TCacheSystem::FullPath (const std::string & path, std::string & fullpath) const
 {
   fullpath = fAbsoluteBase + "/" + path;
