@@ -30,7 +30,7 @@
 #include "util.h"
 #include "../include/cvsfs_ioctl.h"
 
-#define __DEBUG__
+//#define __DEBUG__
 
 
 
@@ -126,7 +126,6 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   struct inode *inode = dentry->d_inode;
   struct super_block *sb = inode->i_sb;
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
-//  struct cvsfs_fattr fattr;
   char namebuf[CVSFS_MAX_PATH];
   char *version;
   char *block;
@@ -284,11 +283,14 @@ cvsfs_file_ioctl (struct inode * inode, struct file * file,
       break;
 
     case CVSFS_CHECKOUT:	/* checkout a file */
+    case CVSFS_CHECKIN:		/* checkin a file */
+    case CVSFS_UPDATE:		/* update a file */
       err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
       dentry->d_time = 1;	/* mark dentry dirty - request update */
       break;
       
     case CVSFS_CHECKOUT_VERSION:	/* checkout a file (revision number given) */
+    case CVSFS_CHECKIN_VERSION:		/* checkin a file (revision number given) */
       {
 	limited_string data;
 	
