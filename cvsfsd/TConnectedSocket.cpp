@@ -21,13 +21,6 @@
 
 #include "TConnectedSocket.h"
 
-#ifdef HAVE_STRING_H
-//#include <string.h>
-#endif
-#ifdef HAVE_STRINGS_H
-//#include <strings.h>
-#endif
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <errno.h>
@@ -36,6 +29,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>	// RedHat 7.2 requires this to provide 'memcpy'
 
 
 
