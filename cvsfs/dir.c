@@ -53,6 +53,7 @@ static struct dentry * cvsfs_lookup (struct inode *, struct dentry *);
 static int cvsfs_unlink (struct inode *, struct dentry *);
 static int cvsfs_mkdir (struct inode *, struct dentry *, int);
 static int cvsfs_rmdir (struct inode *, struct dentry *);
+static int cvsfs_rename (struct inode *, struct dentry *, struct inode *, struct dentry *);
 //static int cvsfs_dir_permission (struct inode *, int);
 
 struct inode_operations cvsfs_dir_inode_operations = {
@@ -61,20 +62,21 @@ struct inode_operations cvsfs_dir_inode_operations = {
 						       unlink:		cvsfs_unlink,
 						       mkdir:		cvsfs_mkdir,
 						       rmdir:		cvsfs_rmdir,
+						       rename:		cvsfs_rename,
 //						       permission:	cvsfs_dir_permission,
 						     };
 
 
 /* forward references - directory dentry operations */
 static int cvsfs_lookup_validate (struct dentry *, int);
-static int cvsfs_hash_dentry (struct dentry *, struct qstr *);
-static int cvsfs_compare_dentry (struct dentry *, struct qstr *, struct qstr *);
+//static int cvsfs_hash_dentry (struct dentry *, struct qstr *);
+//static int cvsfs_compare_dentry (struct dentry *, struct qstr *, struct qstr *);
 static int cvsfs_delete_dentry (struct dentry *);
 
 static struct dentry_operations cvsfs_dentry_operations = {
 							    d_revalidate:	cvsfs_lookup_validate,
-							    d_hash:		cvsfs_hash_dentry,
-							    d_compare:		cvsfs_compare_dentry,
+//							    d_hash:		cvsfs_hash_dentry,
+//							    d_compare:		cvsfs_compare_dentry,
 							    d_delete:		cvsfs_delete_dentry,
 							  };
 							
@@ -85,6 +87,7 @@ static struct dentry_operations cvsfs_dentry_operations = {
 static int
 cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 {
+  struct dentry *item;
   struct dentry *dentry = f->f_dentry;
   struct inode *inode = dentry->d_inode;
   struct super_block *sb = inode->i_sb;
@@ -119,19 +122,53 @@ cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 
     default:
 #ifdef __DEBUG__
-      printk (KERN_DEBUG "cvsfs: readdir - get file #%lli\n", f->f_pos);
+      printk (KERN_DEBUG "cvsfs(%d): readdir - get file #%lli, parent dirty: %lu\n", info->id, f->f_pos, dentry->d_time);
 #endif
       /* ask cvsfs daemon to get the directory contents */
       name = cvsfs_get_file (info, buf, f->f_pos);
       if (!name)
+      {
+        dentry->d_time = 0;	/* all read - parent dir clean */
+      
         return -ENOENT;	/* there are no files in this directory */
+      }
 
       qname.name = name;
       qname.len = strlen (name);
 
-      ino = find_inode_number (dentry, &qname);
+//      ino = find_inode_number (dentry, &qname);
+      ino = 0;
+      qname.hash = full_name_hash (qname.name, qname.len);
+      item = d_lookup (dentry, &qname);
+      if (item)
+      {
+#ifdef __DEBUG__
+        printk (KERN_DEBUG "cvsfs(%d): readdir - hash lookup file %s, invalid = %lu\n", info->id, item->d_name.name, item->d_time);
+#endif
+        if (item->d_inode)
+	  ino = item->d_inode->i_ino;
+
+        if (dentry->d_time != 0)
+        {
+#ifdef __DEBUG__
+          printk (KERN_DEBUG "cvsfs(%d): readdir - parent dir dirty - set this file also dirty\n", info->id);
+#endif
+	  item->d_time = 1;
+	}  
+	dput (item);
+      }
+      
       if (!ino)
+#ifdef __DEBUG__
+      {
+        printk (KERN_DEBUG "cvsfs(%d): readdir - file not found, create new inode\n", info->id);
+#endif
         ino = iunique (dentry->d_sb, 2);
+#ifdef __DEBUG__
+      }
+      else
+        printk (KERN_DEBUG "cvsfs(%d): readdir - file found: inode = %lu\n", info->id, ino);
+#endif
 
       if (filldir (dirent, qname.name, qname.len, f->f_pos, ino, DT_UNKNOWN) >= 0)
         ++(f->f_pos);
@@ -204,7 +241,7 @@ static int cvsfs_unlink (struct inode * dir, struct dentry * dentry)
   int retval;
 
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
-    return -EIO;
+    return -ENOMEM;
 
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): unlink - file %s\n", info->id, buf);
@@ -246,6 +283,13 @@ cvsfs_lookup (struct inode * dir, struct dentry * dentry)
   /* do we have the file ? */
   if (cvsfs_get_attr (info, buf, &fattr) >= 0)
   {
+#ifdef __DEBUG__
+    if (dentry->d_inode)
+      printk (KERN_DEBUG "cvsfs(%d): lookup - inode before #%lu\n", info->id, dentry->d_inode->i_ino);
+    else
+      printk (KERN_DEBUG "cvsfs(%d): lookup - no inode assigned\n", info->id);
+#endif
+  
     fattr.f_ino = iunique (dentry->d_sb, 2);
     inode = cvsfs_iget (dir->i_sb, &fattr);
     kfree (fattr.f_version);
@@ -288,7 +332,7 @@ static int cvsfs_mkdir (struct inode * dir, struct dentry * dentry, int mode)
   printk (KERN_DEBUG "cvsfs(%d): mkdir - mode %d\n", info->id, mode);
 #endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
-    return -EIO;
+    return -ENOMEM;
 
   if ((res = cvsfs_create_dir (info, buf, mode, &fattr)) < 0)
     return res;
@@ -326,7 +370,7 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
   printk (KERN_DEBUG "cvsfs(%d): rmdir\n", info->id);
 #endif
   if (cvsfs_get_name (dentry, buf, sizeof (buf)) < 0)
-    return -EIO;
+    return -ENOMEM;
 
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs(%d): rmdir - file %s\n", info->id, buf);
@@ -340,9 +384,62 @@ static int cvsfs_rmdir (struct inode * dir, struct dentry * dentry)
   inode->i_ctime = dir->i_ctime = dir->i_mtime = CURRENT_TIME;
   dir->i_nlink--;
 
-//  d_delete (dentry);
+  if (dentry->d_parent)
+    dentry->d_parent->d_time = 1;
+
+  d_delete (dentry);
   
   return 0;
+}
+
+
+
+/* rename a file or directory                                                 */
+/* this function is only called when a user program calls the rename system   */
+/* call. The shell do the renaming at higher level - it does not require      */
+/* this function.                                                             */
+static int cvsfs_rename (struct inode * old_dir, struct dentry * old_dentry,
+			 struct inode * new_dir, struct dentry * new_dentry)
+{
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) old_dir->i_sb->u.generic_sbp;
+//  struct inode       *inode;
+  char old_buf[CVSFS_MAX_PATH];
+  char new_buf[CVSFS_MAX_PATH];
+  char *version;
+  int retval;
+
+  if (cvsfs_get_name (old_dentry, old_buf, sizeof (old_buf)) < 0)
+    return -ENOMEM;
+
+  if (cvsfs_get_name (new_dentry, new_buf, sizeof (new_buf)) < 0)
+    return -ENOMEM;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): rename - old file %s to new file %s\n", info->id, old_buf, new_buf);
+#endif
+
+  version = old_dentry->d_inode->u.generic_ip;
+  if ((version != NULL) && (strlen (version) > 0))
+  {                                             /* append version - if any */
+    if (sizeof (old_buf) < (strlen (old_buf) + strlen (version) + 3))
+      return -ENOMEM;
+		
+    strcat (old_buf, "@@");
+    strcat (old_buf, version);
+  }
+
+  retval = cvsfs_move (info, old_buf, new_buf);
+
+  old_dir->i_ctime = old_dir->i_mtime = CURRENT_TIME;
+  old_dentry->d_time = 1;
+  if (old_dentry->d_parent)
+    old_dentry->d_parent->d_time = 1;
+  new_dir->i_ctime = new_dir->i_mtime = CURRENT_TIME;
+  new_dentry->d_time = 1;
+  if (new_dentry->d_parent)
+    new_dentry->d_parent->d_time = 1;
+  
+  return retval;
 }
 
 
@@ -363,8 +460,8 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
 {
   struct inode *inode = dentry->d_inode;
 #ifdef __DEBUG__
-  struct super_block *sb;
-  struct cvsfs_sb_info *info;
+  struct super_block *sb = 0;
+  struct cvsfs_sb_info *info = 0;
   char buf[128];
 #endif
   int valid = 1;
@@ -413,64 +510,64 @@ cvsfs_lookup_validate (struct dentry * dentry, int flags)
 
 
 /* calculate a unique hash for the file name given */
-static int
-cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
-{
-#ifdef __DEBUG__
-  char buf[128];
-#endif
-  unsigned long hash;
-  int i;
-
-#ifdef __DEBUG__
-  cvsfs_get_name (qentry, buf, sizeof (buf));
-  printk (KERN_DEBUG "cvsfs: hash_dentry - parent %s, ", buf);
-  memcpy (buf, str->name, str->len);
-  buf[str->len] = '\0';
-  printk (KERN_DEBUG "%s\n", buf);
-#endif
-
-  hash = init_name_hash ();
-
-  for (i = 0; i < str->len; ++i)
-    hash = partial_name_hash (tolower (str->name[i]), hash);
-
-  str->hash = end_name_hash (hash);
-
-  return 0;
-}
+//static int
+//cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
+//{
+//#ifdef __DEBUG__
+//  char buf[128];
+//#endif
+//  unsigned long hash;
+//  int i;
+//
+//#ifdef __DEBUG__
+//  cvsfs_get_name (qentry, buf, sizeof (buf));
+//  printk (KERN_DEBUG "cvsfs: hash_dentry - parent %s, ", buf);
+//  memcpy (buf, str->name, str->len);
+//  buf[str->len] = '\0';
+//  printk (KERN_DEBUG "%s\n", buf);
+//#endif
+//
+//  hash = init_name_hash ();
+//
+//  for (i = 0; i < str->len; ++i)
+//    hash = partial_name_hash (tolower (str->name[i]), hash);
+//
+//  str->hash = end_name_hash (hash);
+//
+//  return 0;
+//}
 
 
 
 /* compare the two qstrs */
-static int
-cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
-{
-#ifdef __DEBUG__
-  char buf[128];
-#endif
-  int i;
+//static int
+//cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
+//{
+//#ifdef __DEBUG__
+//  char buf[128];
+//#endif
+//  int i;
 
-#ifdef __DEBUG__
-  cvsfs_get_name (dentry, buf, sizeof (buf));
-  printk (KERN_DEBUG "cvsfs: compare_dentry - parent %s,", buf);
-  memcpy (buf, a->name, a->len);
-  buf[a->len] = '\0';
-  printk (KERN_DEBUG "name 1: %s, ", buf);
-  memcpy (buf, b->name, b->len);
-  buf[b->len] = '\0';
-  printk (KERN_DEBUG "name 2: %s\n", buf);
-#endif
+//#ifdef __DEBUG__
+//  cvsfs_get_name (dentry, buf, sizeof (buf));
+//  printk (KERN_DEBUG "cvsfs: compare_dentry - parent %s,", buf);
+//  memcpy (buf, a->name, a->len);
+//  buf[a->len] = '\0';
+//  printk (KERN_DEBUG "name 1: %s, ", buf);
+//  memcpy (buf, b->name, b->len);
+//  buf[b->len] = '\0';
+//  printk (KERN_DEBUG "name 2: %s\n", buf);
+//#endif
 
-  if (a->len != b->len)
-    return 1;
+//  if (a->len != b->len)
+//    return 1;
 
-  for (i = 0; i < a->len; ++i)
-    if (tolower (a->name[i]) != tolower (b->name[i]))
-      return 1;
+//  for (i = 0; i < a->len; ++i)
+//    if (tolower (a->name[i]) != tolower (b->name[i]))
+//      return 1;
 
-  return 0;
-}
+//  return 0;
+//}
 
 
 

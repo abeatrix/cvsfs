@@ -49,9 +49,12 @@ class TEntry
     virtual TEntry * Clone () const = 0;
 
     const std::string & GetName () const { return fName; }
-    int GetLayer () const { return fLayer; }
+    unsigned int GetLayer () const { return fLayer; }
+    virtual const TFileData & GetData () const = 0;
 
-    void SetLayer (int layer) { fLayer = layer; }
+    void SetName (const std::string & name) { fName = name; }
+    void SetLayer (unsigned int layer) { fLayer = layer; }
+    virtual void SetData (const TFileData & data) = 0;
     void SetReadOnly () { fReadOnly = true; }
     void ResetReadOnly () { fReadOnly = false; }
 
@@ -61,9 +64,9 @@ class TEntry
   protected:
     virtual void streamData (std::ostream &) const = 0;
 
-    std::string fName;
-    int		fLayer;
-    bool	fReadOnly;
+    std::string 	fName;
+    unsigned int	fLayer;
+    bool		fReadOnly;
 };
 
 

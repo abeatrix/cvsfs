@@ -356,8 +356,10 @@ int TCvsInterfacePserver::RemoveFile (const std::string & path,
 int TCvsInterfacePserver::TruncateFile (const std::string & path,
 				        const std::string & version)
 {
+  TSyslog *log = TSyslog::instance ();
+
   if (!LoadTree ())
-    return 0;
+    return EIO;
 
   std::string fullpath;
 
@@ -368,6 +370,8 @@ int TCvsInterfacePserver::TruncateFile (const std::string & path,
   }
   else
     fullpath = fConnection.GetProject () + path;
+
+  log->debug << "TruncateFile begin: fullpath = " << fullpath << std::endl;
 
   std::string filename;
 
@@ -401,6 +405,8 @@ int TCvsInterfacePserver::TruncateFile (const std::string & path,
     // update the file data
     file->SetData (dummy);
   }
+
+  log->debug << "TruncateFile exit code 0" << std::endl;
 
   return 0;
 }
@@ -538,6 +544,99 @@ int TCvsInterfacePserver::PutFile (const std::string & path,
   changedFile->SetData (newdata);
 
   return 0;	// everything ok
+}
+
+
+
+int TCvsInterfacePserver::Move (const std::string & oldpath,
+				const std::string & version,
+				const std::string & newpath)
+{
+  if (!LoadTree ())
+    return EIO;
+
+  if (oldpath == newpath)
+    return 0;
+
+  std::string old_fullpath;
+  std::string new_fullpath;
+
+  if (fConnection.GetProject () == ".")
+  {
+    old_fullpath = oldpath;
+    old_fullpath.erase (0, 1);	// skip leading slash
+    new_fullpath = newpath;
+    new_fullpath.erase (0, 1);	// skip leading slash
+  }
+  else
+  {
+    old_fullpath = fConnection.GetProject () + oldpath;
+    new_fullpath = fConnection.GetProject () + newpath;
+  }
+
+  std::string old_filename;
+
+  TDirectory *olddir = GetParentDirectory (old_fullpath, old_filename);
+  if (!olddir)
+    return ENOENT;
+
+  TEntry *oldentry = olddir->FindEntry (old_filename);
+  if (!oldentry)
+    return ENOENT;
+
+  std::string new_filename;
+
+  TDirectory *newdir = GetParentDirectory (new_fullpath, new_filename);
+  if (!newdir)
+    return ENOENT;		// parent directory of the destination must exist
+
+  TCacheManager::size_type destLayer;
+  TCacheManager::size_type sourceLayer = oldentry->GetLayer ();
+
+  TEntry *newentry = newdir->FindEntry (new_filename);
+  if (newentry)
+    destLayer = newentry->GetLayer ();
+  else
+    destLayer = fLocal->GetLayer ();
+
+  if ((oldentry->GetLayer () == fRemote->GetLayer ()) ||
+      (destLayer == fRemote->GetLayer ()))
+    return EROFS;
+
+  if (!fCacheManager.Move (sourceLayer, old_fullpath, destLayer, new_fullpath))
+    return errno;
+
+  // trim the directory listing along the actions before
+  if (!newentry)
+  {
+    // clone an updated version of the old entry
+    newentry = CloneEntry (oldentry, destLayer);
+
+    if (!newentry)
+      return ENOMEM;
+
+    newentry->SetName (new_filename);
+
+    newdir->AddEntry (newentry);
+  }
+
+  // update the file data
+  TFileData dummy;
+
+  if (!fCacheManager.FileAttribute (newentry->GetLayer (), new_fullpath, dummy))
+    return ENOENT;
+
+  newentry->SetData (dummy);
+
+  // remove the old entry
+  olddir->RemoveEntry (oldentry);
+
+  // if the source was a checked-out file - pop up the CVS version
+  oldentry = FindEntry (&fCvsDir, old_fullpath);
+  if (oldentry)
+    olddir->AddEntry (oldentry->Clone ());	// then bring it back to front
+
+  return 0;
 }
 
 
@@ -1426,6 +1525,62 @@ TDirectory *TCvsInterfacePserver::GetParentDirectory (const std::string & path,
 
   // now we are in the parent of the to be added file
   filename = directory;
+
+  return dir;
+}
+
+
+
+TEntry * TCvsInterfacePserver::CloneEntry (TEntry * old,
+					   TCacheManager::size_type layer) const
+{
+  if (old->isA () != TEntry::DirEntry)
+  {
+    // it is not a directory - clone it
+    TFile * file = new TFile (old->GetName (), "");
+
+    if (!file)
+      return 0;
+
+    if (old->ValidData ())
+      file->SetData (old->GetData ());
+
+    file->SetLayer (layer);
+
+    return file;
+  }
+
+  // it is a directory - clone it and traverse through its contents
+  TDirectory * dir = new TDirectory (old->GetName ());
+
+  if (!dir)
+    return 0;
+
+  if (old->ValidData ())
+    dir->SetData (old->GetData ());
+
+  dir->SetLayer (layer);
+
+  // now traverse through the contents
+  int pos = 0;
+  TDirectory *olddir = static_cast<TDirectory *> (old);
+  TEntry *entry;
+
+  while ((entry = olddir->GetEntry (pos)) != 0)
+  {
+    TEntry *newentry = CloneEntry (entry, layer);
+
+    if (!newentry)
+    {
+      delete dir;
+
+      return 0;
+    }
+
+    dir->AddEntry (newentry);
+
+    ++pos;
+  }
 
   return dir;
 }

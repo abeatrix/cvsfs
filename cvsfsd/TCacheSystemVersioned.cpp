@@ -101,6 +101,18 @@ bool TCacheSystemVersioned::DeleteFile (const std::string & path) const
 
 
 
+bool TCacheSystemVersioned::Move (const std::string & from, const TCacheSystem & system, const std::string & to) const
+{
+  std::string::size_type pos;
+
+  if ((pos = from.rfind (VersionDelimiter)) == std::string::npos)
+    return false;		// manage only versioned files
+
+  return MoveItem (from, system, to);
+}
+
+
+
 bool TCacheSystemVersioned::FileAttribute (const std::string & path, TFileData & data) const
 {
   std::string::size_type pos;
@@ -108,7 +120,9 @@ bool TCacheSystemVersioned::FileAttribute (const std::string & path, TFileData &
   if ((pos = path.rfind (VersionDelimiter)) == std::string::npos)
     return false;		// manage only versioned files
 
-  return FileAttribs (path, data);
+  bool dummy;
+
+  return FileAttribs (path, data, dummy);
 }
 
 

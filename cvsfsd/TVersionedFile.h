@@ -40,12 +40,14 @@ class TVersionedFile : public TEntry
 
     const TFile * FindVersion (const std::string &) const;
     const TFile * GetVersion (int) const;
+    virtual const TFileData & GetData () const;
 
     virtual TEntry::EntryType isA () const;
 
     void AddVersion (const std::string &, const TFileData &);
 
     void SetHeadVersion (const std::string & version) { fHeadVersion = version; }
+    virtual void SetData (const TFileData & data);
 
     virtual bool ValidData () const { return fDataValid; }
 

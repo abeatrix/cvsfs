@@ -33,9 +33,10 @@ class TCacheManager
 {
   private:
     typedef std::vector<TCacheSystem *> CacheVector;
-    typedef CacheVector::size_type	size_type;
 
   public:
+    typedef CacheVector::size_type	size_type;
+
     TCacheManager (const std::string & root) : fRoot (root) {}
     ~TCacheManager ();
 
@@ -54,6 +55,7 @@ class TCacheManager
     bool CreateFile (size_type, const std::string &, int) const;
     bool DeleteDirectory (size_type, const std::string &) const;
     bool DeleteFile (size_type, const std::string &) const;
+    bool Move (size_type, const std::string &, size_type, const std::string &) const;
 
     bool FileAttribute (size_type, const std::string &, TFileData &) const;
 

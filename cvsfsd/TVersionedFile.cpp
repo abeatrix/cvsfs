@@ -61,6 +61,20 @@ const TFile * TVersionedFile::GetVersion (int index) const
 
 
 
+const TFileData & TVersionedFile::GetData () const
+{
+  static TFileData dummyVersion;
+
+  const TFile *file = FindVersion (fHeadVersion);
+
+  if (!file)
+    return dummyVersion;
+
+  return file->GetData ();
+}
+
+
+
 TEntry::EntryType TVersionedFile::isA () const
 {
   return TEntry::VersionedFileEntry;
@@ -82,6 +96,23 @@ void TVersionedFile::AddVersion (const std::string & version, const TFileData & 
 
   if (version == fHeadVersion)
     fDataValid = true;
+}
+
+
+
+void TVersionedFile::SetData (const TFileData & data)
+{
+  TFile * item = new TFile (GetName (), fHeadVersion);
+
+  item->SetLayer (fLayer);
+  item->SetData (data);
+
+  if (fReadOnly)
+    item->SetReadOnly ();
+
+  fFileVersions.AddVersion (fHeadVersion, item);
+
+  fDataValid = true;
 }
 
 

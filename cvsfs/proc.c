@@ -622,6 +622,55 @@ cvsfs_truncate_file (struct cvsfs_sb_info * info, char * name)
 
 
 
+/* this function asks the daemon to move a file                       */
+/* the request sent to the daemon has this layout:                    */
+/*   move <full path of old file> <full path of new file>             */
+/* the expected return is from the daemon is:                         */
+/*   <completion code> '\0'                                           */
+/* the completion codes are:                                          */
+/*   0 for successful completed                                       */
+/*   one of the values defined in asm/errno.h in case of an error     */
+int
+cvsfs_move (struct cvsfs_sb_info * info, char * old_name, char * new_name)
+{
+  char * cmd;
+  char * response;
+  char * ptr;
+  int size;
+  int ret;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): move from file %s to file %s\n", info->id, old_name, new_name);
+#endif
+
+  size = 7 + strlen (old_name) + strlen (new_name);
+  cmd = kmalloc (size, GFP_KERNEL);
+  if (!cmd)
+    return -ENOMEM;
+
+  sprintf (cmd, "move %s %s", old_name, new_name);
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): move - send request -->%s\n", info->id, cmd);
+#endif    
+  ret = cvsfs_serialize_request (info, cmd, size, &response);
+  kfree (cmd);
+  if (ret <= 0)		/* error, daemon not running or empty response */
+    return -EIO;
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs(%d): move - returned from daemon -->%s\n", info->id, response);
+#endif    
+
+  /* now analyze the string */
+  ret = simple_strtoul (response, &ptr, 0);
+
+  kfree (response);
+
+  return -ret;
+}
+
+
+
 /* this function asks the daemon to do a action                       */
 /* the request sent to the daemon has this layout:                    */
 /*   ioctl <action id> <opt. parameter>                               */

@@ -37,14 +37,14 @@ class TFile : public TEntry
     virtual TEntry * Clone () const;
 
     const std::string & GetVersion () const { return fVersion; }
-    const TFileData & GetData () const { return fData; }
+    virtual const TFileData & GetData () const { return fData; }
     void SetVersion (const std::string & version) { fVersion = version; }
 
     virtual TEntry::EntryType isA () const;
 
     virtual bool ValidData () const { return fDataValid; }
 
-    void SetData (const TFileData & data);
+    virtual void SetData (const TFileData & data);
 
   private:
     virtual void streamData (std::ostream &) const;

@@ -35,6 +35,7 @@ class TCacheSystemCheckedout : public TCacheSystem
     virtual bool CreateFile (const std::string &, int) const;
     virtual bool DeleteDirectory (const std::string &) const;
     virtual bool DeleteFile (const std::string &) const;
+    virtual bool Move (const std::string &, const TCacheSystem &, const std::string &) const;
 
     virtual bool FileAttribute (const std::string &, TFileData &) const;
 
@@ -42,6 +43,7 @@ class TCacheSystemCheckedout : public TCacheSystem
     virtual std::ofstream * Out (const std::string &, int = 0) const;
 
   private:
+    virtual void FullPath (const std::string &, std::string &) const;
     virtual TEntry * AddFile (TDirectory &, const std::string &, TFileData &) const;
 
     bool EvaluateFullName (const std::string &, std::string &) const;

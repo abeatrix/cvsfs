@@ -21,8 +21,6 @@
 #include "TCvsInterface.h"
 #include "TCvsConnectionPserver.h"
 #include "TMountParameters.h"
-//#include "TCacheVersionedFiles.h"
-//#include "TCacheWorkFiles.h"
 
 // forward references
 class TFile;
@@ -49,6 +47,7 @@ class TCvsInterfacePserver : public TCvsInterface
     virtual const TEntry * MakeFile (const std::string &, const std::string &, int);
     virtual int RemoveFile (const std::string &, const std::string &);
     virtual int TruncateFile (const std::string &, const std::string &);
+    virtual int Move (const std::string &, const std::string &, const std::string &);
     virtual int Invalidate (const std::string &, const std::string &);
     virtual int GetLocation (const std::string &, const std::string &, std::string &);
     virtual int Checkout (const std::string &, const std::string &);
@@ -95,6 +94,8 @@ class TCvsInterfacePserver : public TCvsInterface
 
     const TFile * LoadFile (const std::string &, const std::string &, TVersionedFile &);
     TDirectory * GetParentDirectory (const std::string &, std::string &);
+
+    TEntry * CloneEntry (TEntry *, TCacheManager::size_type) const;
 };
 
 

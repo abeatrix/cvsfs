@@ -35,10 +35,11 @@ class TDirectory : public TEntry
 
     TEntry * FindEntry (const std::string &) const;
     TEntry * GetEntry (int) const;
+    virtual const TFileData & GetData () const { return fFileData; };
 
     virtual TEntry::EntryType isA () const;
 
-    void SetData (const TFileData & data);
+    virtual void SetData (const TFileData & data);
 
     void AddEntry (TEntry *);
     void RemoveEntry (TEntry *);

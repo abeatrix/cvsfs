@@ -1,7 +1,7 @@
 /***************************************************************************
-                          TEntry.cpp  -  description
+                          TModuleActionMove.h  -  description
                              -------------------
-    begin                : Mon Aug 5 2002
+    begin                : Wed Sep 11 2002
     copyright            : (C) 2002 by Petric Frank
     email                : pfrank@gmx.de
  ***************************************************************************/
@@ -15,37 +15,22 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
+#ifndef __TMODULEACTIONMOVE_H__
+#define __TMODULEACTIONMOVE_H__
+
+#include "TModuleAction.h"
+
+
+
+class TModuleActionMove : public TModuleAction
+{
+  public:
+    TModuleActionMove ();
+    virtual ~TModuleActionMove ();
+
+    virtual bool doit (TCvsInterface &);
+};
+
+
+
 #endif
-
-#include "TEntry.h"
-
-
-
-TEntry::TEntry (const std::string & name)
-: fName (name), fLayer ((unsigned int) -1), fReadOnly (false)
-{
-}
-
-
-
-TEntry::TEntry (const TEntry & clone)
-: fName (clone.fName), fLayer (clone.fLayer), fReadOnly (clone.fReadOnly)
-{
-}
-
-
-
-TEntry::~TEntry ()
-{
-}
-
-
-
-std::ostream & TEntry::operator << (std::ostream & str) const
-{
-  streamData (str);
-
-  return str;
-}

@@ -104,6 +104,18 @@ bool TCacheSystemCheckedout::DeleteFile (const std::string & path) const
 
 
 
+bool TCacheSystemCheckedout::Move (const std::string & from, const TCacheSystem & system, const std::string & to) const
+{
+  std::string newpath;
+
+  if (!EvaluateFullName (from, newpath))
+    return false;
+
+  return MoveItem (newpath, system, to);
+}
+
+
+
 bool TCacheSystemCheckedout::FileAttribute (const std::string & path, TFileData & data) const
 {
   std::string newpath;
@@ -111,7 +123,21 @@ bool TCacheSystemCheckedout::FileAttribute (const std::string & path, TFileData 
   if (!EvaluateFullName (path, newpath))
     return false;
 
-  return FileAttribs (newpath, data);
+  bool dummy;
+
+  return FileAttribs (newpath, data, dummy);
+}
+
+
+
+void TCacheSystemCheckedout::FullPath (const std::string & path, std::string & fullpath) const
+{
+  std::string newpath;
+
+  if (!EvaluateFullName (path, newpath))
+    newpath = path;
+
+  TCacheSystem::FullPath (newpath, fullpath);
 }
 
 

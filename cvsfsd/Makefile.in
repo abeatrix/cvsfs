@@ -74,10 +74,10 @@ CXXFLAGS = -O3 -Wall
 INCLUDES = -I/lib/modules/$(KERNEL_VERSION)/build/include
 
 sbin_PROGRAMS = cvsfsd
-cvsfsd_SOURCES = main.cpp TCacheManager.cpp TCacheSystem.cpp 	TCacheSystemCheckedout.cpp TCacheSystemSimple.cpp 	TCacheSystemVersioned.cpp TConnectedSocket.cpp TCvsConnection.cpp 	TCvsConnectionPserver.cpp TCvsInterface.cpp TCvsInterfacePserver.cpp 	TCvsSession.cpp TCvsSessionPserver.cpp TDirectory.cpp TEntry.cpp 	TFile.cpp TFileData.cpp TFileVersions.cpp TModuleAction.cpp 	TModuleActionAttr.cpp TModuleActionDir.cpp TModuleActionGet.cpp 	TModuleActionIoctl.cpp TModuleActionMkdir.cpp TModuleActionMkfile.cpp 	TModuleActionPut.cpp TModuleActionQuit.cpp TModuleActionRmdir.cpp 	TModuleActionRmfile.cpp TModuleActionTruncfile.cpp TModuleServer.cpp 	TMountParameters.cpp TSocket.cpp TSyslog.cpp TSyslogFile.cpp 	TSyslogStream.cpp TSyslogStreambuf.cpp TVersionedFile.cpp 	XException.cpp XPserverTimeout.cpp
+cvsfsd_SOURCES = main.cpp TCacheManager.cpp TCacheSystem.cpp 	TCacheSystemCheckedout.cpp TCacheSystemSimple.cpp 	TCacheSystemVersioned.cpp TConnectedSocket.cpp TCvsConnection.cpp 	TCvsConnectionPserver.cpp TCvsInterface.cpp TCvsInterfacePserver.cpp 	TCvsSession.cpp TCvsSessionPserver.cpp TDirectory.cpp TEntry.cpp 	TFile.cpp TFileData.cpp TFileVersions.cpp TModuleAction.cpp 	TModuleActionAttr.cpp TModuleActionDir.cpp TModuleActionGet.cpp 	TModuleActionIoctl.cpp TModuleActionMkdir.cpp TModuleActionMkfile.cpp 	TModuleActionMove.cpp TModuleActionPut.cpp TModuleActionQuit.cpp 	TModuleActionRmdir.cpp TModuleActionRmfile.cpp 	TModuleActionTruncfile.cpp TModuleServer.cpp TMountParameters.cpp 	TSocket.cpp TSyslog.cpp TSyslogFile.cpp TSyslogStream.cpp 	TSyslogStreambuf.cpp TVersionedFile.cpp XException.cpp 	XPserverTimeout.cpp
 
 
-noinst_HEADERS = TCacheManager.h TCacheSystem.h TCacheSystemCheckedout.h 	TCacheSystemSimple.h TCacheSystemVersioned.h TConnectedSocket.h 	TCvsConnection.h TCvsConnectionPserver.h TCvsInterface.h 	TCvsInterfacePserver.h TCvsSession.h TCvsSessionPserver.h TDirectory.h 	TEntry.h TFile.h TFileData.h TFileVersions.h TModuleAction.h 	TModuleActionAttr.h TModuleActionDir.h TModuleActionGet.h 	TModuleActionIoctl.h TModuleActionMkdir.h TModuleActionMkfile.h 	TModuleActionPut.h TModuleActionQuit.h TModuleActionRmdir.h 	TModuleActionRmfile.h TModuleActionTruncfile.h TModuleServer.h 	TMountParameters.h TSocket.h TSyslog.h TSyslogFile.h TSyslogStream.h 	TSyslogStreambuf.h TVersionedFile.h XException.h XPserverTimeout.h
+noinst_HEADERS = TCacheManager.h TCacheSystem.h TCacheSystemCheckedout.h 	TCacheSystemSimple.h TCacheSystemVersioned.h TConnectedSocket.h 	TCvsConnection.h TCvsConnectionPserver.h TCvsInterface.h 	TCvsInterfacePserver.h TCvsSession.h TCvsSessionPserver.h TDirectory.h 	TEntry.h TFile.h TFileData.h TFileVersions.h TModuleAction.h 	TModuleActionAttr.h TModuleActionDir.h TModuleActionGet.h 	TModuleActionIoctl.h TModuleActionMkdir.h TModuleActionMkfile.h 	TModuleActionMove.h TModuleActionPut.h TModuleActionQuit.h 	TModuleActionRmdir.h TModuleActionRmfile.h TModuleActionTruncfile.h 	TModuleServer.h TMountParameters.h TSocket.h TSyslog.h TSyslogFile.h 	TSyslogStream.h TSyslogStreambuf.h TVersionedFile.h XException.h 	XPserverTimeout.h
 
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
@@ -95,11 +95,11 @@ TCvsInterface.o TCvsInterfacePserver.o TCvsSession.o \
 TCvsSessionPserver.o TDirectory.o TEntry.o TFile.o TFileData.o \
 TFileVersions.o TModuleAction.o TModuleActionAttr.o TModuleActionDir.o \
 TModuleActionGet.o TModuleActionIoctl.o TModuleActionMkdir.o \
-TModuleActionMkfile.o TModuleActionPut.o TModuleActionQuit.o \
-TModuleActionRmdir.o TModuleActionRmfile.o TModuleActionTruncfile.o \
-TModuleServer.o TMountParameters.o TSocket.o TSyslog.o TSyslogFile.o \
-TSyslogStream.o TSyslogStreambuf.o TVersionedFile.o XException.o \
-XPserverTimeout.o
+TModuleActionMkfile.o TModuleActionMove.o TModuleActionPut.o \
+TModuleActionQuit.o TModuleActionRmdir.o TModuleActionRmfile.o \
+TModuleActionTruncfile.o TModuleServer.o TMountParameters.o TSocket.o \
+TSyslog.o TSyslogFile.o TSyslogStream.o TSyslogStreambuf.o \
+TVersionedFile.o XException.o XPserverTimeout.o
 cvsfsd_LDADD = $(LDADD)
 cvsfsd_DEPENDENCIES = 
 cvsfsd_LDFLAGS = 
@@ -125,13 +125,14 @@ DEP_FILES =  .deps/TCacheManager.P .deps/TCacheSystem.P \
 .deps/TModuleAction.P .deps/TModuleActionAttr.P \
 .deps/TModuleActionDir.P .deps/TModuleActionGet.P \
 .deps/TModuleActionIoctl.P .deps/TModuleActionMkdir.P \
-.deps/TModuleActionMkfile.P .deps/TModuleActionPut.P \
-.deps/TModuleActionQuit.P .deps/TModuleActionRmdir.P \
-.deps/TModuleActionRmfile.P .deps/TModuleActionTruncfile.P \
-.deps/TModuleServer.P .deps/TMountParameters.P .deps/TSocket.P \
-.deps/TSyslog.P .deps/TSyslogFile.P .deps/TSyslogStream.P \
-.deps/TSyslogStreambuf.P .deps/TVersionedFile.P .deps/XException.P \
-.deps/XPserverTimeout.P .deps/main.P
+.deps/TModuleActionMkfile.P .deps/TModuleActionMove.P \
+.deps/TModuleActionPut.P .deps/TModuleActionQuit.P \
+.deps/TModuleActionRmdir.P .deps/TModuleActionRmfile.P \
+.deps/TModuleActionTruncfile.P .deps/TModuleServer.P \
+.deps/TMountParameters.P .deps/TSocket.P .deps/TSyslog.P \
+.deps/TSyslogFile.P .deps/TSyslogStream.P .deps/TSyslogStreambuf.P \
+.deps/TVersionedFile.P .deps/XException.P .deps/XPserverTimeout.P \
+.deps/main.P
 SOURCES = $(cvsfsd_SOURCES)
 OBJECTS = $(cvsfsd_OBJECTS)
 

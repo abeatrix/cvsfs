@@ -104,7 +104,13 @@ cvsfs_file_open (struct inode * inode, struct file * file)
     ret = cvsfs_truncate_file (info, namebuf);
 
     dentry->d_time = 1;		/* file attributes dirty - reread them */
+    if (dentry->d_parent)
+      dentry->d_parent->d_time = 1;
   }
+
+#ifdef __DEBUG__    
+    printk (KERN_DEBUG "cvsfs(%d): file_open returns %d\n", info->id, ret);
+#endif
   
   return ret;
 }
@@ -114,6 +120,12 @@ cvsfs_file_open (struct inode * inode, struct file * file)
 static int
 cvsfs_file_release (struct inode * inode, struct file * file)
 {
+#ifdef __DEBUG__    
+  struct dentry *dentry = file->f_dentry;
+  
+  printk (KERN_DEBUG "cvsfs: file_release from mode %d and flags %d for inode %lu, dentry invalid = %lu\n", file->f_mode, file->f_flags, inode->i_ino, dentry->d_time);
+#endif
+
   return 0;
 }
 
@@ -147,7 +159,7 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   }
 
 #ifdef __DEBUG__    
-  printk (KERN_DEBUG "cvsfs(%d): file_write %s at offset %lli (%d Bytes)\n", info->id, namebuf, *offset, count);
+  printk (KERN_DEBUG "cvsfs(%d): file_write %s at offset %lli (%d Bytes), inode %lu\n", info->id, namebuf, *offset, count, inode->i_ino);
 #endif
   
   block = kmalloc (GFP_KERNEL, 4096);
@@ -174,11 +186,17 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   }
 
   kfree (block);
+
+#ifdef __DEBUG__    
+    printk (KERN_DEBUG "cvsfs(%d): file_write completed - exit code %d\n", info->id, ret);
+#endif
   
   if (ret < 0)
     return ret;
 
   dentry->d_time = 1;	// system should evaluate the actual file attributes
+  if (dentry->d_parent)
+    dentry->d_parent->d_time = 1;
 
   return count;
 }

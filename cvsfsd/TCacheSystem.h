@@ -35,8 +35,8 @@ class TCacheSystem
     virtual ~TCacheSystem ();
 
     void SetRoot (const std::string & root);
-    void SetLayer (int layer) { fLayer = layer; }
-    int GetLayer () { return fLayer; }
+    void SetLayer (unsigned int layer) { fLayer = layer; }
+    unsigned int GetLayer () { return fLayer; }
 
     virtual bool LoadTree (TDirectory &) const = 0;
 
@@ -46,6 +46,7 @@ class TCacheSystem
     virtual bool CreateFile (const std::string &, int) const = 0;
     virtual bool DeleteDirectory (const std::string &) const = 0;
     virtual bool DeleteFile (const std::string &) const = 0;
+    virtual bool Move (const std::string &, const TCacheSystem &, const std::string &) const = 0;
 
     virtual bool FileAttribute (const std::string &, TFileData &) const = 0;
 
@@ -61,15 +62,17 @@ class TCacheSystem
     bool DirDelete (const std::string &) const;
     bool FileCreate (const std::string &, int) const;
     bool FileDelete (const std::string &) const;
-    bool FileAttribs (const std::string &, TFileData &) const;
+    bool MoveItem (const std::string &, const TCacheSystem &, const std::string &) const;
+    bool FileAttribs (const std::string &, TFileData &, bool &) const;
 
+    virtual void FullPath (const std::string &, std::string &) const;
     virtual TEntry * AddDir (TDirectory &, const std::string &, TFileData &) const;
     virtual TEntry * AddFile (TDirectory &, const std::string &, TFileData &) const;
 
-    std::string fBase;
-    std::string fAbsoluteBase;
-    int		fLayer;
-    bool	fReadOnly;
+    std::string		fBase;
+    std::string 	fAbsoluteBase;
+    unsigned int	fLayer;
+    bool		fReadOnly;
 };
 
 

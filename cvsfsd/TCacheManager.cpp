@@ -168,6 +168,18 @@ bool TCacheManager::DeleteFile (size_type cacheidx, const std::string & name) co
 
 
 
+bool TCacheManager::Move (size_type oldcacheidx, const std::string & oldname,
+                          size_type newcacheidx, const std::string & newname) const
+{
+  if ((oldcacheidx < 0) || (oldcacheidx >= fCaches.size ()) ||
+      (newcacheidx < 0) || (newcacheidx >= fCaches.size ()))
+    return false;
+
+  return fCaches[oldcacheidx]->Move (oldname, *(fCaches[newcacheidx]), newname);
+}
+
+
+
 bool TCacheManager::FileAttribute (size_type cacheidx, const std::string & name, TFileData & data) const
 {
   if ((cacheidx < 0) || (cacheidx >= fCaches.size ()))

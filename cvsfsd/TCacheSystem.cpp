@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <stdio.h>
 #include "TEntry.h"
 #include "TDirectory.h"
 #include "TFile.h"
@@ -33,7 +34,7 @@
 
 
 TCacheSystem::TCacheSystem (const std::string & base, bool readOnly)
-: fBase (base), fAbsoluteBase (base), fLayer (-1), fReadOnly (readOnly)
+: fBase (base), fAbsoluteBase (base), fLayer ((unsigned int) -1), fReadOnly (readOnly)
 {
 }
 
@@ -105,7 +106,9 @@ bool TCacheSystem::DeleteFile (const std::string & path) const
 
 bool TCacheSystem::FileAttribute (const std::string & path, TFileData & data) const
 {
-  return FileAttribs (path, data);
+  bool dummy;
+
+  return FileAttribs (path, data, dummy);
 }
 
 
@@ -153,16 +156,16 @@ bool TCacheSystem::TreeLoad (TDirectory & root, const std::string & path) const
 
     std::string filename = direntry->d_name;
 
-    std::string filepath = dir + "/" + filename;
-    struct stat info;
-
     // obtain file attributes
+    bool isDir;
     TFileData data;
-    if (FileAttribute (path + "/" + filename, data))
+    std::string actual = path + "/" + filename;
+
+    if (FileAttribs (actual, data, isDir))
     {
       TEntry * entry;
 
-      if (S_ISDIR (info.st_mode))
+      if (isDir)
         entry = AddDir (root, filename, data);
       else
         entry = AddFile (root, filename, data);
@@ -171,7 +174,7 @@ bool TCacheSystem::TreeLoad (TDirectory & root, const std::string & path) const
         // we have now a valid entry to the current file/directory
         if (entry->isA () == TEntry::DirEntry)
 	  // this is a directory - dig into this one recursively
-          TreeLoad (*static_cast<TDirectory *> (entry), path + "/" + filename);
+          TreeLoad (*static_cast<TDirectory *> (entry), actual);
     }
   }
 
@@ -348,7 +351,23 @@ bool TCacheSystem::FileDelete (const std::string & name) const
 
 
 
-bool TCacheSystem::FileAttribs (const std::string & path, TFileData & data) const
+bool TCacheSystem::MoveItem (const std::string & name,
+                             const TCacheSystem & newsystem,
+			     const std::string & newname) const
+{
+  std::string oldpath = fAbsoluteBase + "/" + name;
+  std::string newpath;
+
+  newsystem.FullPath (newname, newpath);
+
+  int outcome = rename (oldpath.c_str (), newpath.c_str ());
+
+  return outcome == 0;
+}
+
+
+
+bool TCacheSystem::FileAttribs (const std::string & path, TFileData & data, bool & isDir) const
 {
   std::string fullpath = fAbsoluteBase + "/" + path;
   struct stat info;
@@ -362,7 +381,16 @@ bool TCacheSystem::FileAttribs (const std::string & path, TFileData & data) cons
   data.SetMtime (info.st_mtime);
   data.SetCtime (info.st_ctime);
 
+  isDir = S_ISDIR (info.st_mode);
+
   return true;
+}
+
+
+
+void TCacheSystem::FullPath (const std::string & path, std::string & fullpath) const
+{
+  fullpath = fAbsoluteBase + "/" + path;
 }
 
 

@@ -35,6 +35,7 @@ class TCacheSystemSimple : public TCacheSystem
     virtual bool CreateFile (const std::string &, int) const;
     virtual bool DeleteDirectory (const std::string &) const;
     virtual bool DeleteFile (const std::string &) const;
+    virtual bool Move (const std::string &, const TCacheSystem &, const std::string &) const;
 
     virtual bool FileAttribute (const std::string &, TFileData &) const;
 

@@ -85,9 +85,18 @@ bool TCacheSystemSimple::DeleteFile (const std::string & path) const
 
 
 
+bool TCacheSystemSimple::Move (const std::string & from, const TCacheSystem & system, const std::string & to) const
+{
+  return MoveItem (from, system, to);
+}
+
+
+
 bool TCacheSystemSimple::FileAttribute (const std::string & path, TFileData & data) const
 {
-  return FileAttribs (path, data);
+  bool dummy;
+
+  return FileAttribs (path, data, dummy);
 }
 
 

@@ -331,9 +331,16 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
 	    
 	      cvsfs_remove_superblock (info);
             }
+	    else
+              printk (KERN_ERR "cvsfs read_super: can not allocate root dentry\n");
           }
+	  else
+            printk (KERN_ERR "cvsfs read_super: can not allocate root inode\n");
+	  
           iput (inode);
         }
+	else
+          printk (KERN_ERR "cvsfs read_super: it is not allowed to use the same mount point twice\n");
       }
       kfree (info->connection.user);
       kfree (info->connection.pass);
