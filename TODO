@@ -18,9 +18,10 @@ Long term:
 
 * IPv6 support
 * Enchance GNU make to support logging via this driver to evaluate the
-  file dependencies.
+  file dependencies. This allows to support tools which have no options
+  (unlike gcc) to generate the dependencies.
 * Adapt for kernel 2.2.x ?
-* allow > 2GB files (i.e. 64 Bit file system)
+* allow > 2GB files (i.e. 64 Bit file system) (mostly done but untested)
 * Support other remote filesystems like
   - ftp
   - ...

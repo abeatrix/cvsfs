@@ -1,3 +1,33 @@
+2002-10-07  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.9
+	* cvsmnt/main.c: fix calculation of default umask and dmask. Now the
+	  'x' bits are also presented for files if they are set in CVS.
+
+2002-10-03  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/file.c(cvsfs_file_ioctl): implement check-in and update CVS
+	  commands
+
+2002-10-01  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TCvsInterfacePserver: add prototypes (with dummy bodies) to
+	  allow a check-in of files
+
+2002-09-30  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TCvsInterfacePserver.cpp: integrate the command stream classes
+	  TCvsPserverCommandTree and TCvsPserverCommandCheckout
+
+2002-09-27  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TCvsPserverCommandTree.cpp: new - implement tree retrieval
+	  command stream to get complete directory tree from CVS (including
+	  also empty directories !)
+
+2002-09-25  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TCvsPserverCommandCheckout.cpp: new - implement check-out
+	  command stream for checking out files from CVS
+
+2002-09-23  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TCvsPserverCommand.cpp: new base class - separate cvs command
+	  stream from TCvsInterface
+
 2002-09-19  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.8
 	* include/cvsfs_errno.h: new - defines additional error codes required

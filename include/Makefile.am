@@ -2,4 +2,4 @@
 
 #EXTRA_DIST = cvsfs_ioctl.h
 
-noinst_HEADERS = cvsfs_ioctl.h
+noinst_HEADERS = cvsfs_errno.h cvsfs_ioctl.h

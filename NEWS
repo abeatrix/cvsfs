@@ -1,3 +1,9 @@
+Version 1.1.9:
+Fix an error in cvsmnt which prevents to take over the 'executable'-flag
+of files with the default file mask (used when none given).
+The default directory mask was hardcoded in cvsmnt - fixed.
+Refactoring the communication to the CVS server.
+
 Version 1.1.8:
 Updated this file - some versions were missing.
 Revert a changes done in 1.1.5 regarding directory handling. Found a better
