@@ -30,7 +30,7 @@
 #include "util.h"
 #include "../include/cvsfs_ioctl.h"
 
-#define __DEBUG__
+//#define __DEBUG__
 
 
 

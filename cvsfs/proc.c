@@ -47,7 +47,7 @@
 #include "devfs.h"
 #include "util.h"
 
-#define __DEBUG__
+//#define __DEBUG__
 
 
 
