@@ -1,0 +1,51 @@
+#! /bin/sh
+#
+# Install the proper init script in /etc/init.d
+#
+# Execute this script as root
+#
+# $1 gives the path where cvsfsd have been installed
+#
+if [ -z "$1" ]; then
+    DAEMON="/usr/local/sbin/cvsfsd"
+else
+    DAEMON="$1"
+fi
+
+if [ -d "/etc/rc.d" ]; then
+    if [ -e "/etc/rc.status" ]; then
+	# SuSE has a own init structure
+	echo -n "Detected SuSE installation"
+	SCRIPT=cvsfsd.SuSE
+    else
+	# RedHat identified
+	echo -n "Detected RedHat installation"
+	SCRIPT=cvsfsd.RedHat
+    fi
+elif [ -d "/etc/rc2.d" ]; then
+    # This covers Debian v3
+    echo -n "Detected Debian installation"
+    SCRIPT=cvsfsd.Debian
+else
+    echo "Unsupported distribution - install (maybe adapted) init script manually"
+    echo "See cvsfsd.SuSE or cvsfsd.Debian for an example."
+    exit 0
+fi
+
+# Install the init script. There is one variable that must be replaced
+# which gives the path where cvsvfsd is installed.
+# Due the installing person can change this when he executes the
+# 'configure' this must be kept variable here also.
+
+echo " - install initscript $SCRIPT as /etc/init.d/cvsfsd"
+
+# replace '/' in the path by '\/' as requied by sed
+# be aware: this requires at least bash 2.0 !
+# Question: has someone a better solution ?
+DAEMON=${DAEMON//\//\\\/}
+
+# construct the sed command line option
+SED_OPTION="s/^CVSFSD_PROGRAM.*/CVSFSD_PROGRAM=\"$DAEMON\"/"
+
+cat $SCRIPT | sed $SED_OPTION > /etc/init.d/cvsfsd
+chmod 0744 /etc/init.d/cvsfsd

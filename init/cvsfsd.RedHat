@@ -1,0 +1,73 @@
+#! /bin/sh
+#
+# chkconfig: - 60 20
+# description: The cvs virtual filesystem driver allows to mount \
+#              cvs repositories like local disks.
+# processname: cvsfsd
+
+# Source function library.
+. /etc/init.d/functions
+
+# Get config.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+if [ ${NETWORKING} = "no" ]
+then
+	exit 0
+fi
+
+# This variable will be set at installation time
+CVSFSD_PROGRAM
+
+start() {
+	echo -n $"Starting cvs virtual filesystem daemon: "
+	if [ ! -d "/proc/cvsfs" ]; then
+	    /sbin/modprobe cvsfs
+	fi
+	daemon $CVSFSD_PROGRAM
+	RETVAL=$?
+
+	echo
+	return $RETVAL
+}	
+
+stop() {
+	echo -n $"Stopping cvs virtual filesystem daemon: "
+	killproc $CVSFSD_PROGRAM
+	RETVAL=$?
+
+	echo
+	return $RETVAL
+}
+
+restart() {
+	stop
+	start
+}	
+
+# See how we were called.
+case "$1" in
+  start)
+  	start
+	;;
+  stop)
+  	stop
+	;;
+  status)
+	status $CVSFSD_PROGRAM
+	;;
+  restart|reload)
+  	restart
+	;;
+#  condrestart)
+#  	[ -f /var/lock/subsys/rstatd ] && restart || :
+#	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart}"
+	exit 1
+	;;
+esac
+
+exit $?
+

@@ -1,0 +1,65 @@
+#! /bin/sh
+#
+# /etc/init.d/cvsvfsd
+#
+### BEGIN INIT INFO
+# Provides:       cvsvfsd
+# Required-Start: $remote_fs
+# Required-Stop:
+# Default-Start:  2 3 5
+# Default-Stop:
+# Description:    cvsfs-Daemon
+### END INIT INFO
+
+# Determine the base and follow a runlevel link name.
+base=${0##*/}
+link=${base#*[SK][0-9][0-9]}
+
+. /etc/rc.status
+rc_reset
+
+# This variable will be set at installation time
+CVSFSD_PROGRAM
+
+case "$1" in
+    start)
+        echo -n "Starting cvs virtual filesystem daemon:"
+	# load kernel module if necessary
+	if [ ! -d /proc/cvsfs ];  then
+	    /sbin/modprobe cvsfs
+	fi
+	# start control daemon
+        startproc $CVSFSD_PROGRAM
+	rc_status -v
+        ;;
+    stop)
+        echo -n "Shutting down cvs virtual filesystem daemon:"
+        killproc -TERM $CVSFSD_PROGRAM
+        rc_status -v
+        ;;
+    restart)
+        ## Stop the service and regardless of whether it was
+        ## running or not, start it again.
+	$0 stop
+	$0 start
+        # Remember status and be quiet
+        rc_status
+	;;
+    status)
+        # Status has a slightly different for the status command:
+        # 0 - service running
+        # 1 - service dead, but /var/run/  pid  file exists
+        # 2 - service dead, but /var/lock/ lock file exists
+        # 3 - service not running
+
+        echo -n "Checking for cvs virtual filesystem daemon: "
+        # NOTE: checkproc returns LSB compliant status values.
+        checkproc $CVSFSD_PROGRAM
+        rc_status -v
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|status}"
+	rc_failed 3
+	rc_status -v
+esac
+rc_exit
