@@ -1,3 +1,7 @@
+2001-11-21  Petric Frank  <pfrank@gmx.de>
+	* cvsmnt/main.c (parse_args): use getopt_long instead of getopt.
+	* all: format code along with GNU coding standards.
+
 2001-11-20  Petric Frank  <pfrank@gmx.de>
 	* Changelog: rearrange the sequence of change entries (latest first)
 

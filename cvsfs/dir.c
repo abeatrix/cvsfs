@@ -66,7 +66,8 @@ static struct dentry_operations cvsfs_dentry_operations = {
 							
 
 						
-static int cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
+static int
+cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 {
   struct dentry *dentry = f->f_dentry;
   struct inode *inode = dentry->d_inode;
@@ -135,19 +136,23 @@ static int cvsfs_readdir (struct file * f, void * dirent, filldir_t filldir)
 
 
 
-static int cvsfs_dir_open (struct inode * inode, struct file * file)
+static int
+cvsfs_dir_open (struct inode * inode, struct file * file)
 {
   return 0;
 }
 
 
 
-static struct dentry * cvsfs_lookup (struct inode * dir, struct dentry * dentry)
+/* called from kernel when searching for a file (name is in dentry) */
+static struct dentry *
+cvsfs_lookup (struct inode * dir, struct dentry * dentry)
 {
   struct cvsfs_fattr fattr;
   struct inode       *inode;
 
-  if (cvsfs_get_attr (dentry, &fattr, (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp) < 0)
+  if (cvsfs_get_attr (dentry, &fattr,
+                      (struct cvsfs_sb_info *) dir->i_sb->u.generic_sbp) < 0)
   {
     return ERR_PTR (-ENOENT);
   }
@@ -169,7 +174,8 @@ static struct dentry * cvsfs_lookup (struct inode * dir, struct dentry * dentry)
 
 
 
-static int cvsfs_lookup_validate (struct dentry * dentry, int flags)
+static int
+cvsfs_lookup_validate (struct dentry * dentry, int flags)
 {
   struct inode *inode = dentry->d_inode;
   int valid = 1;
@@ -189,7 +195,8 @@ static int cvsfs_lookup_validate (struct dentry * dentry, int flags)
 
 
 
-static int cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
+static int
+cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
 {
   unsigned long hash;
   int i;
@@ -206,7 +213,8 @@ static int cvsfs_hash_dentry (struct dentry * qentry, struct qstr * str)
 
 
 
-static int cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
+static int
+cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct qstr * b)
 {
   int i;
 
@@ -222,7 +230,8 @@ static int cvsfs_compare_dentry (struct dentry * dentry, struct qstr * a, struct
 
 
 
-static int cvsfs_delete_dentry (struct dentry * dentry)
+static int
+cvsfs_delete_dentry (struct dentry * dentry)
 {
   if (dentry->d_inode)
     if (is_bad_inode (dentry->d_inode))

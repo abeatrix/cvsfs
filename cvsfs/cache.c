@@ -61,7 +61,9 @@ static struct cvsfs_dir_cache dir_cache;
 
 
 
-int cvsfs_cache_init ()
+/* initialize the directory cache */
+int
+cvsfs_cache_init ()
 {
   memset (&dir_cache, 0, sizeof (dir_cache));
 
@@ -70,7 +72,9 @@ int cvsfs_cache_init ()
 
 
 
-int cvsfs_cache_empty ()
+/* free the directory cache */
+int
+cvsfs_cache_empty ()
 {
   int i;
   int j;
@@ -89,7 +93,9 @@ int cvsfs_cache_empty ()
 
 
 
-unsigned long cvsfs_cache_hash (char * name)
+/* create a hash number from a name */
+unsigned long
+cvsfs_cache_hash (char * name)
 {
   unsigned long hash = 0;
   int i;
@@ -102,7 +108,9 @@ unsigned long cvsfs_cache_hash (char * name)
 
 
 
-int cvsfs_cache_deldir (struct cvsfs_hashlist_node * node)
+/* removes complete directory tree from the cache */
+int
+cvsfs_cache_deldir (struct cvsfs_hashlist_node * node)
 {
   struct cvsfs_dirlist_node *p;
   struct cvsfs_dirlist_node *q;
@@ -142,7 +150,9 @@ int cvsfs_cache_deldir (struct cvsfs_hashlist_node * node)
 
 
 
-int cvsfs_cache_infront (unsigned long hash, struct cvsfs_hashlist_node *node)
+/* add given entry in front of cache list */
+int
+cvsfs_cache_infront (unsigned long hash, struct cvsfs_hashlist_node *node)
 {
   unsigned long h;
 
@@ -171,7 +181,8 @@ int cvsfs_cache_infront (unsigned long hash, struct cvsfs_hashlist_node *node)
 
 
 
-int cvsfs_cache_shrink (unsigned long hash)
+int
+cvsfs_cache_shrink (unsigned long hash)
 {
   struct cvsfs_hashlist_node *p;
 
@@ -188,7 +199,8 @@ int cvsfs_cache_shrink (unsigned long hash)
 
 
 
-struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info * info, char * name, char * version)
+struct cvsfs_directory *
+cvsfs_cache_add (struct cvsfs_sb_info * info, char * name, char * version)
 {
   unsigned long hash;
   struct cvsfs_hashlist_node *node;
@@ -247,7 +259,8 @@ struct cvsfs_directory * cvsfs_cache_add (struct cvsfs_sb_info * info, char * na
 
 
 
-struct cvsfs_directory * cvsfs_cache_get (struct cvsfs_sb_info * info, char * name, char * version)
+struct cvsfs_directory *
+cvsfs_cache_get (struct cvsfs_sb_info * info, char * name, char * version)
 {
   struct cvsfs_hashlist_node *node;
   unsigned long hash;

@@ -32,7 +32,9 @@
 
 
 
-int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info, char * dir, char * name, char * version)
+int
+cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info,
+                           char * dir, char * name, char * version)
 {
   if (cvsfs_execute (sock, "Argument -N") < 0)
   {
@@ -94,7 +96,9 @@ int cvsfs_command_sequence_co (struct socket * sock, struct cvsfs_sb_info * info
 
 
 
-int cvsfs_command_sequence_rdiff (struct socket * sock, struct cvsfs_sb_info * info, char * basedir, char * version)
+int
+cvsfs_command_sequence_rdiff (struct socket * sock, struct cvsfs_sb_info * info,
+                              char * basedir, char * version)
 {
 //  if (cvsfs_execute (info, "UseUnchanged") < 0)
 //  {

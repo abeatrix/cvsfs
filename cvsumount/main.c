@@ -32,7 +32,8 @@
 
 
 
-void help ()
+void
+help ()
 {
   printf ("\n");
   printf ("usage: cvsumount mount-point\n");
@@ -40,7 +41,8 @@ void help ()
 
 
 
-char *fullpath (const char *p)
+char *
+fullpath (const char *p)
 {
   char path[MAXPATHLEN];
   
@@ -61,7 +63,8 @@ char *fullpath (const char *p)
 
 
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
   struct mntent *ment;
   FILE *mtab;

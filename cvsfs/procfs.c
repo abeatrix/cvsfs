@@ -28,6 +28,9 @@
 
 
 
+// this structure (and the accompanied functions) is defined to solve the
+// problem with duplicate /proc entries. It establishes a conting object
+// to the directory/file entries.
 struct cvsfs_proc_tree
 {
   struct cvsfs_proc_tree *next;
@@ -71,7 +74,9 @@ static void remove_subdir (const char *, struct cvsfs_proc_tree *);
 
 
 
-static struct cvsfs_proc_tree * find_child (const char * name, struct cvsfs_proc_tree * parent)
+/* Start of the helper functions to circumvent procfs problems */
+static struct cvsfs_proc_tree *
+find_child (const char * name, struct cvsfs_proc_tree * parent)
 {
   struct cvsfs_proc_tree *loop;
 
@@ -84,7 +89,8 @@ static struct cvsfs_proc_tree * find_child (const char * name, struct cvsfs_proc
 
 
 
-static struct cvsfs_proc_tree * find_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
+static struct cvsfs_proc_tree *
+find_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
 {
   struct cvsfs_proc_tree *loop;
   char *ptr;
@@ -117,7 +123,8 @@ static struct cvsfs_proc_tree * find_subdir_recursive (char * path, struct cvsfs
 }
 
 
-static struct cvsfs_proc_tree * find_subdir (const char * path, struct cvsfs_proc_tree * base)
+static struct cvsfs_proc_tree *
+find_subdir (const char * path, struct cvsfs_proc_tree * base)
 {
   char pathelem[CVSFS_MAXPATHLEN];
 
@@ -128,7 +135,8 @@ static struct cvsfs_proc_tree * find_subdir (const char * path, struct cvsfs_pro
 
 
 
-static struct cvsfs_proc_tree * create_child (const char * name, mode_t mode, struct cvsfs_proc_tree * parent)
+static struct cvsfs_proc_tree *
+create_child (const char * name, mode_t mode, struct cvsfs_proc_tree * parent)
 {
   struct cvsfs_proc_tree *child;
 
@@ -187,7 +195,8 @@ static struct cvsfs_proc_tree * create_child (const char * name, mode_t mode, st
 
 
 
-static struct cvsfs_proc_tree * create_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
+static struct cvsfs_proc_tree *
+create_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
 {
   struct cvsfs_proc_tree *element;
   char *ptr;
@@ -223,7 +232,8 @@ static struct cvsfs_proc_tree * create_subdir_recursive (char * path, struct cvs
 
 
 
-static struct cvsfs_proc_tree * create_subdir (const char * path, struct cvsfs_proc_tree * parent)
+static struct cvsfs_proc_tree *
+create_subdir (const char * path, struct cvsfs_proc_tree * parent)
 {
   char pathelem[CVSFS_MAXPATHLEN];
 
@@ -234,7 +244,8 @@ static struct cvsfs_proc_tree * create_subdir (const char * path, struct cvsfs_p
 
 
 
-static void kill_child_tree (struct cvsfs_proc_tree * start)
+static void
+kill_child_tree (struct cvsfs_proc_tree * start)
 {
   struct cvsfs_proc_tree *loop;
 
@@ -253,7 +264,8 @@ static void kill_child_tree (struct cvsfs_proc_tree * start)
 
 
 
-static void remove_child (const char * name, struct cvsfs_proc_tree * parent)
+static void
+remove_child (const char * name, struct cvsfs_proc_tree * parent)
 {
   struct cvsfs_proc_tree *loop;
 
@@ -293,7 +305,8 @@ static void remove_child (const char * name, struct cvsfs_proc_tree * parent)
 
 
 
-static void remove_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
+static void
+remove_subdir_recursive (char * path, struct cvsfs_proc_tree * parent)
 {
   struct cvsfs_proc_tree *sub;
   char *ptr;
@@ -332,7 +345,8 @@ static void remove_subdir_recursive (char * path, struct cvsfs_proc_tree * paren
 
 
 
-static void remove_subdir (const char * path, struct cvsfs_proc_tree * base)
+static void
+remove_subdir (const char * path, struct cvsfs_proc_tree * base)
 {
   char pathelem[CVSFS_MAXPATHLEN];
 
@@ -340,10 +354,13 @@ static void remove_subdir (const char * path, struct cvsfs_proc_tree * base)
 
   remove_subdir_recursive (pathelem, base);
 }
+/* End of the helper functions to circumvent procfs problems */
 
 
 
-int cvsfs_procfs_init ()
+/* called when cvsfs module is loaded - initialize procfs entries */
+int
+cvsfs_procfs_init ()
 {
   struct proc_dir_entry *cvsfs_root;
 
@@ -351,8 +368,9 @@ int cvsfs_procfs_init ()
   cvsfs_root = proc_mkdir (cvsfs_procfs_root, NULL);
   if (cvsfs_root != NULL)
   {
-    cvsfs_tree = (struct cvsfs_proc_tree *) kmalloc (sizeof (struct cvsfs_proc_tree) +
-                                                     strlen (cvsfs_procfs_root), GFP_KERNEL);
+    cvsfs_tree = (struct cvsfs_proc_tree *)
+                 kmalloc (sizeof (struct cvsfs_proc_tree) +
+                          strlen (cvsfs_procfs_root), GFP_KERNEL);
     if (cvsfs_tree != NULL)
     {
       cvsfs_tree->next = NULL;
@@ -376,7 +394,9 @@ int cvsfs_procfs_init ()
 
 
 
-void cvsfs_procfs_cleanup ()
+/* called when cvsfs module is to be unloaded - cleanup procfs */
+void
+cvsfs_procfs_cleanup ()
 {
   if (cvsfs_tree != NULL)
   {
@@ -389,7 +409,9 @@ void cvsfs_procfs_cleanup ()
 
 
 
-int cvsfs_procfs_user_init (const char * root, void * sb)
+/* call when a mount is issued - create mount specific procfs entries */
+int
+cvsfs_procfs_user_init (const char * root, void * sb)
 {
   struct cvsfs_proc_tree *base;
 
@@ -436,7 +458,9 @@ int cvsfs_procfs_user_init (const char * root, void * sb)
 
 
 
-void cvsfs_procfs_user_cleanup (const char * root)
+/* calle in case of umount - remove mount specific procfs entries */
+void
+cvsfs_procfs_user_cleanup (const char * root)
 {
   struct cvsfs_proc_tree *base;
 
@@ -456,7 +480,9 @@ void cvsfs_procfs_user_cleanup (const char * root)
 
 
 
-static int proc_cvsfs_read_status (char *buffer, char **start, off_t offset, int size, int *eof, void *data)
+static int
+proc_cvsfs_read_status (char *buffer, char **start,
+                        off_t offset, int size, int *eof, void *data)
 {
   int len;
   struct super_block *sb;
@@ -481,7 +507,9 @@ static int proc_cvsfs_read_status (char *buffer, char **start, off_t offset, int
 
 
 
-static int proc_cvsfs_read_view (char *buffer, char **start, off_t offset, int size, int *eof, void *data)
+static int
+proc_cvsfs_read_view (char *buffer, char **start,
+                      off_t offset, int size, int *eof, void *data)
 {
   int len;
 
@@ -496,7 +524,8 @@ static int proc_cvsfs_read_view (char *buffer, char **start, off_t offset, int s
 
 
 
-void cvsfs_reset_viewrule (struct super_block * sb)
+void
+cvsfs_reset_viewrule (struct super_block * sb)
 {
   printk (KERN_DEBUG "cvsfs: cvsfs_reset_viewrule'\n");
   printk (KERN_DEBUG "cvsfs: cvsfs_reset_viewrule - not implemented'\n");
@@ -504,7 +533,8 @@ void cvsfs_reset_viewrule (struct super_block * sb)
 
 
 
-int cvsfs_append_viewrule (struct super_block * sb, char *filemask, char *rule)
+int
+cvsfs_append_viewrule (struct super_block * sb, char *filemask, char *rule)
 {
   printk (KERN_DEBUG "cvsfs: cvsfs_append_viewrule - filemask: '%s', rule: '%s'\n", filemask, rule);
   printk (KERN_DEBUG "cvsfs: cvsfs_append_viewrule - not implemented\n");
@@ -514,7 +544,9 @@ int cvsfs_append_viewrule (struct super_block * sb, char *filemask, char *rule)
 
 
 
-static int proc_cvsfs_write_view (struct file *file, const char *buffer, unsigned long size, void *data)
+static int
+proc_cvsfs_write_view (struct file *file, const char *buffer,
+                       unsigned long size, void *data)
 {
   struct super_block *sb;
   char *line;
@@ -533,7 +565,8 @@ static int proc_cvsfs_write_view (struct file *file, const char *buffer, unsigne
 
   ++(file->private_data);
 
-  for (ptr = (char *) buffer, len = 0; (*ptr != '\n') && (*ptr != '\0') && (len <= size); ++ptr, ++len);
+  for (ptr = (char *) buffer, len = 0;
+       (*ptr != '\n') && (*ptr != '\0') && (len <= size); ++ptr, ++len);
 
   if (len == 0)
     return 1;
@@ -579,7 +612,8 @@ static int proc_cvsfs_write_view (struct file *file, const char *buffer, unsigne
 
 
 
-int cvsfs_control_command (struct super_block * sb, char *command, char *parameter)
+int
+cvsfs_control_command (struct super_block * sb, char *command, char *parameter)
 {
   if (parameter != NULL)
     printk (KERN_DEBUG "cvsfs: cvsfs_control_command - command: '%s', parameter: '%s'\n", command, parameter);
@@ -593,7 +627,9 @@ int cvsfs_control_command (struct super_block * sb, char *command, char *paramet
 
 
 
-static int proc_cvsfs_write_control (struct file *file, const char *buffer, unsigned long size, void *data)
+static int
+proc_cvsfs_write_control (struct file *file, const char *buffer,
+                          unsigned long size, void *data)
 {
   struct super_block *sb;
   char *line;
@@ -612,7 +648,8 @@ static int proc_cvsfs_write_control (struct file *file, const char *buffer, unsi
 
   ++(file->private_data);
 
-  for (ptr = (char *) buffer, len = 0; (*ptr != '\n') && (*ptr != '\0') && (len <= size); ++ptr, ++len);
+  for (ptr = (char *) buffer, len = 0;
+       (*ptr != '\n') && (*ptr != '\0') && (len <= size); ++ptr, ++len);
 
   if (len == 0)
     return 1;

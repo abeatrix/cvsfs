@@ -32,7 +32,9 @@ static DECLARE_FSTYPE (cvsfs_fs_type, "cvsfs", cvsfs_read_super, 0);
 
 
 
-static int __init init_cvsfs_fs ()
+/* initialize the file systen driver */
+static int
+__init init_cvsfs_fs ()
 {
   printk (KERN_DEBUG "cvsfs: init_cvs_vfs\n");
 
@@ -43,7 +45,9 @@ static int __init init_cvsfs_fs ()
 
 
 
-static void __exit exit_cvsfs_fs ()
+/* cleanup the file system driver before unloading */
+static void
+__exit exit_cvsfs_fs ()
 {
   printk (KERN_DEBUG "cvsfs: exit_cvs_vfs\n");
 

@@ -32,7 +32,8 @@
 
 
 
-void help ()
+void
+help ()
 {
   printf ("\n");
   printf ("usage: cvsmount service mount-point [-o options, ...]\n\n");
@@ -52,8 +53,9 @@ void help ()
 
 
 
-int parse_args (int argc, char *argv[], char **user, char **password, char **cvsroot,
-                char **userid, char **groupid, char **filemask, char **dirmask)
+int
+parse_args (int argc, char *argv[], char **user, char **password, char **cvsroot,
+            char **userid, char **groupid, char **filemask, char **dirmask)
 {
   int opt;
   char *opts;
@@ -89,19 +91,19 @@ int parse_args (int argc, char *argv[], char **user, char **password, char **cvs
               if (strcmp ("uid", opts) == 0)
                 *userid = strdup (opteq);
               else
-              if (strcmp ("gid", opts) == 0)
-                *groupid = strdup (opteq);
-              else
-              if (strcmp ("fmask", opts) == 0)
-                *filemask = strdup (opteq);
-              else
-                if (strcmp ("dmask", opts) == 0)
-                  *dirmask = strdup (opteq);
+                if (strcmp ("gid", opts) == 0)
+                  *groupid = strdup (opteq);
                 else
-                {
-	          fprintf (stderr, "invalid option ('%s')\n", opts);
-	          return -1;
-	        }
+                  if (strcmp ("fmask", opts) == 0)
+                    *filemask = strdup (opteq);
+                  else
+                    if (strcmp ("dmask", opts) == 0)
+                      *dirmask = strdup (opteq);
+                    else
+                    {
+    	              fprintf (stderr, "invalid option ('%s')\n", opts);
+	              return -1;
+	            }
       }
     }
   }
@@ -111,9 +113,10 @@ int parse_args (int argc, char *argv[], char **user, char **password, char **cvs
 
 
 
-void init_mount (char *server, char *module, char *mountpoint,
-                 char *user, char *password, char *cvsroot,
-		 char *userid, char *groupid, char *filemask, char *dirmask)
+void
+init_mount (char *server, char *module, char *mountpoint,
+            char *user, char *password, char *cvsroot,
+	    char *userid, char *groupid, char *filemask, char *dirmask)
 {
   char *args[24];
   int status;
@@ -173,17 +176,17 @@ void init_mount (char *server, char *module, char *mountpoint,
   
   if (fork () == 0)
   {
-/*    if (file_exist (BINDIR "/cvsmnt", NULL))
-    {
-      execv (BINDIR "/cvsmnt", args);
-      fprintf (stderr, "execv of %s failed. Error was %s\n",
-               BINDIR "/cvsmnt", strerror (errno));
-    }
-    else
-    {
-*/      execvp ("cvsmnt", args);
+//    if (file_exist (BINDIR "/cvsmnt", NULL))
+//    {
+//      execv (BINDIR "/cvsmnt", args);
+//      fprintf (stderr, "execv of %s failed. Error was %s\n",
+//               BINDIR "/cvsmnt", strerror (errno));
+//    }
+//    else
+//    {
+      execvp ("cvsmnt", args);
       fprintf (stderr, "execvp of cvsmnt failed. Error was %s\n", strerror (errno));
-/*    } */
+//    }
     
     exit (1);
   }
@@ -200,7 +203,8 @@ void init_mount (char *server, char *module, char *mountpoint,
 
 
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
   char *mountpoint;
   char *server;
@@ -236,13 +240,15 @@ int main(int argc, char *argv[])
   argv += 2;
   argc -= 2;
   
-  if (parse_args (argc, argv, &user, &password, &cvsroot, &userid, &groupid, &filemask, &dirmask) != 0)
+  if (parse_args (argc, argv, &user, &password, &cvsroot,
+                  &userid, &groupid, &filemask, &dirmask) != 0)
   {
     help ();
     return -1;
   }
 
-  init_mount (server, module, mountpoint, user, password, cvsroot, userid, groupid, filemask, dirmask);  
+  init_mount (server, module, mountpoint, user, password,
+              cvsroot, userid, groupid, filemask, dirmask);  
   
   return EXIT_SUCCESS;
 }

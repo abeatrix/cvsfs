@@ -242,10 +242,10 @@ installed by calling 'make install'. You must be root to do this.
  source              ! destination
 ---------------------+--------------------------------------------------------
 cvsfs/cvsfs.o        ! /lib/modules/<kernel-version>/kernel/fs/cvsfs/cvsfs.o
-cvsmount/mount.cvsfs ! /sbin/mount.cvsfs
-cvsmount/cvsmount    ! /usr/bin/cvsmount
-cvsumount/cvsumount  ! /usr/bin/cvsumount
-cvsmnt/cvsmnt        ! /usr/bin/cvsmnt
+symlink to cvsmount  ! /bin/mount.cvsfs
+cvsmount/cvsmount    ! /usr/local/bin/cvsmount
+cvsumount/cvsumount  ! /usr/local/bin/cvsumount
+cvsmnt/cvsmnt        ! /usr/local/bin/cvsmnt
 
 Actually there is no configure script available. So if you want the get an
 other behaviour you have to modify the Makefile's yourself.

@@ -30,7 +30,9 @@
 
 
 
-int sock_send (struct socket * sock, const void * buf, int len)
+/* sending bytes via the socket (to the cvs pserver) */
+int
+sock_send (struct socket * sock, const void * buf, int len)
 {
   struct iovec iov;
   struct msghdr msg;
@@ -68,7 +70,9 @@ int sock_send (struct socket * sock, const void * buf, int len)
 
 
 
-int sock_recv (struct socket * sock, unsigned char * buf, int size, unsigned flags)
+/* receiving bytes via the socket (to the cvs pserver) */
+int
+sock_recv (struct socket * sock, unsigned char * buf, int size, unsigned flags)
 {
   struct iovec iov;
   struct msghdr msg;
@@ -102,7 +106,9 @@ int sock_recv (struct socket * sock, unsigned char * buf, int size, unsigned fla
 
 
 
-int cvsfs_read_raw_data (struct socket * sock, unsigned long count, char * buffer)
+/* receive the number of raw bytes from the cvs pserver */
+int
+cvsfs_read_raw_data (struct socket * sock, unsigned long count, char * buffer)
 {
   int i = 0;
   int retries = 10;             /* up to 10 retries */
@@ -163,7 +169,9 @@ int cvsfs_read_raw_data (struct socket * sock, unsigned long count, char * buffe
 
 
 
-int cvsfs_readline (struct socket * sock, char * buf, int len)
+/* receive exactly one line from cvs pserver */
+int
+cvsfs_readline (struct socket * sock, char * buf, int len)
 {
   int i = 0;
   int out = 0;
@@ -215,7 +223,10 @@ int cvsfs_readline (struct socket * sock, char * buf, int len)
 
 
 
-int cvsfs_long_readline (struct socket * sock, char * buf, int len)
+/* receive exactly one line from cvs pserver. same as before
+   but with a longer timeout */
+int
+cvsfs_long_readline (struct socket * sock, char * buf, int len)
 {
   int count;
   int ret;
@@ -245,7 +256,9 @@ int cvsfs_long_readline (struct socket * sock, char * buf, int len)
 
 
 
-int cvsfs_execute (struct socket * sock, char * cmd)
+/* sends a line (appends a line delimiter) to the cvs pserver */
+int
+cvsfs_execute (struct socket * sock, char * cmd)
 {
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_execute - command: '%s'\n", cmd);
@@ -269,7 +282,10 @@ int cvsfs_execute (struct socket * sock, char * cmd)
 
 
 
-int cvsfs_execute_command (struct socket * sock, ...)
+/* sends a line (appends a line delimiter) to the cvs pserver
+   same as before, but lets pass the parts by separate parameters */
+int
+cvsfs_execute_command (struct socket * sock, ...)
 {
   va_list args;
   char *value;
@@ -303,7 +319,10 @@ int cvsfs_execute_command (struct socket * sock, ...)
 
 
 
-int cvsfs_login (struct socket * sock, char * user, char * password, char * root, int test)
+/* sends a cvs pserver login sequence and analyzes the result */
+int
+cvsfs_login (struct socket * sock,
+             char * user, char * password, char * root, int test)
 {
   char buf[CVSFS_MAX_LINE];
   int i;
@@ -378,7 +397,10 @@ int cvsfs_login (struct socket * sock, char * user, char * password, char * root
 
 
 
-int cvsfs_connect (struct socket **sockptr, char * user, char * password, char * root, struct sockaddr_in address, int test)
+/* establish a socket connection to the cvs pserver and login */
+int
+cvsfs_connect (struct socket **sockptr, char * user, char * password,
+               char * root, struct sockaddr_in address, int test)
 {
   struct sockaddr_in local_address;
 /*  struct timeval tv; */
@@ -409,16 +431,16 @@ int cvsfs_connect (struct socket **sockptr, char * user, char * password, char *
 
   /* Setting of timeout is not working - i don't know why */
   /* so i have to use a busy-wait when reading data - bad */
-/*  fs = get_fs (); */
-/*  set_fs (get_ds ()); */
+//  fs = get_fs ();
+//  set_fs (get_ds ());
 
   /* set a read timeot of 5 seconds */
-/*  tv.tv_sec = 5; */
-/*  tv.tv_usec = 0; */
+//  tv.tv_sec = 5;
+//  tv.tv_usec = 0;
   
-/*  info->sock->ops->setsockopt (info->sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof (tv)); */
+//  info->sock->ops->setsockopt (info->sock, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof (tv));
 
-/*  set_fs (fs); */
+//  set_fs (fs);
 
   if (cvsfs_login (*sockptr, user, password, root, test) < 0)
   {
@@ -427,6 +449,7 @@ int cvsfs_connect (struct socket **sockptr, char * user, char * password, char *
     return -1;
   }
 
+  /* is this required ? */
 //  if (cvsfs_execute (info, "Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Set-checkin-prog Set-update-prog Notified Module-expansion Wrapper-rcsOption M Mbinary E F MT") < 0)
 //  {
 //    printk (KERN_DEBUG "cvsfs: cvsfs_login - 'Valid-responses' failed !\n");
@@ -446,7 +469,9 @@ int cvsfs_connect (struct socket **sockptr, char * user, char * password, char *
 
 
 
-void cvsfs_disconnect (struct socket **sockptr)
+/* closes the connection to the cvs pserver */
+void
+cvsfs_disconnect (struct socket **sockptr)
 {
 #ifdef __DEBUG__
   printk (KERN_DEBUG "cvsfs: cvsfs_disconnect\n");

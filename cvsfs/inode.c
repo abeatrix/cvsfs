@@ -57,7 +57,8 @@ static void cvsfs_set_inode_attr (struct inode *, struct cvsfs_fattr *);
 
 
 
-struct inode * cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
+struct inode *
+cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
 {
   struct inode *inode = new_inode (sb);
 #ifdef __DEBUG__
@@ -81,13 +82,13 @@ struct inode * cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
       inode->i_op = &cvsfs_dir_inode_operations;
       inode->i_fop = &cvsfs_dir_operations;
        break;
-/*
-    case S_IFLNK:*/			/* symlink */
-/*      inode->i_op = &cvsfs_symlink_inode_operations;
-      break;
-*/
+
+//    case S_IFLNK:*/			/* symlink */
+//      inode->i_op = &cvsfs_symlink_inode_operations;
+//      break;
+
     default:
-/*        init_special_inode (inode, mode, dev); */
+//        init_special_inode (inode, mode, dev);
       inode->i_fop = &cvsfs_file_operations;
   }
 
@@ -98,7 +99,8 @@ struct inode * cvsfs_iget (struct super_block *sb, struct cvsfs_fattr *fattr)
 
 
 
-static void cvsfs_set_inode_attr (struct inode *dest, struct cvsfs_fattr *src)
+static void
+cvsfs_set_inode_attr (struct inode *dest, struct cvsfs_fattr *src)
 {
   struct cvsfs_versioninfo *info;
 
@@ -139,7 +141,9 @@ static void cvsfs_set_inode_attr (struct inode *dest, struct cvsfs_fattr *src)
 
 
 
-struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int silent)
+/* called when a mount is issued - initializes super block */
+struct super_block *
+cvsfs_read_super (struct super_block *sb, void *data, int silent)
 {
   struct inode		*inode;
   struct cvsfs_sb_info	*info;
@@ -217,7 +221,8 @@ struct super_block *cvsfs_read_super (struct super_block *sb, void *data, int si
 
 
 
-static void cvsfs_delete_inode (struct inode * inode)
+static void
+cvsfs_delete_inode (struct inode * inode)
 {
   lock_kernel ();
 
@@ -228,7 +233,9 @@ static void cvsfs_delete_inode (struct inode * inode)
 
 
 
-static void cvsfs_put_super (struct super_block * sb)
+/* called when a umount is issued - shuts down the super block */
+static void
+cvsfs_put_super (struct super_block * sb)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
 
@@ -241,7 +248,8 @@ static void cvsfs_put_super (struct super_block * sb)
 
 
 
-static int cvsfs_statfs (struct super_block * sb, struct statfs * attr)
+static int
+cvsfs_statfs (struct super_block * sb, struct statfs * attr)
 {
   attr->f_type = CVSFS_SUPER_MAGIC;
   attr->f_bsize = 1024;
@@ -255,7 +263,8 @@ static int cvsfs_statfs (struct super_block * sb, struct statfs * attr)
 
 
 
-static void cvsfs_clear_inode (struct inode * inode)
+static void
+cvsfs_clear_inode (struct inode * inode)
 {
 //  char buff[256];
   

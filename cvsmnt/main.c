@@ -31,31 +31,54 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <grp.h>
+#include <getopt.h>
 #include <arpa/inet.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 
 
 
-void help ()
+void
+program_version ()
 {
-  printf ("\n");
-  printf ("usage: cvsmnt mount-point [options]\n");
-  printf ("  -s server    cvs-pserver\n");
-  printf ("  -r root      cvs root directory\n");
-  printf ("  -m project   module name\n");
-  printf ("  -u user      user account at cvs server (anonymous if not given)\n");
-  printf ("  -p password  password at cvs server (default is <none>)\n");
-  printf ("  -i uid       user id of the remote files (default is current uid)\n");
-  printf ("  -g gid       group id of the remote files (default is current uid)\n");
-  printf ("  -f mask      file mask of the remote files (default is current umask)\n");
-  printf ("  -d mask      file mask of the remote directories (default is current umask)\n");
-  printf ("  -h           print this help screen\n");
+  printf ("cvsmnt %s\n", VERSION);
 }
 
 
 
-void add_option (char **data, const char *option, const char *argument)
+void
+help ()
+{
+  program_version ();
+  printf ("\n");
+  printf ("usage: cvsmnt mount-point [options]\n");
+  printf ("  --server server\n");
+  printf ("  -s server         cvs-pserver\n");
+  printf ("  --root root\n");
+  printf ("  -r root           cvs root directory\n");
+  printf ("  --project project\n");
+  printf ("  -m project        module name\n");
+  printf ("  --user user\n");
+  printf ("  -u user           user account at cvs server (anonymous if not given)\n");
+  printf ("  --password password\n");
+  printf ("  -p password       password at cvs server (default is <none>)\n");
+  printf ("  --uid uid\n");
+  printf ("  -i uid            user id of the remote files (default is current uid)\n");
+  printf ("  --gid gid\n");
+  printf ("  -g gid            group id of the remote files (default is current uid)\n");
+  printf ("  --filemask mask\n");
+  printf ("  -f mask           file mask of the remote files (default is current umask)\n");
+  printf ("  --dirmask mask\n");
+  printf ("  -d mask           file mask of the remote directories (default is current umask)\n");
+  printf ("  --help\n");
+  printf ("  -h                print this help screen\n");
+  printf ("  --version         print the program version\n\n");
+}
+
+
+
+void
+add_option (char **data, const char *option, const char *argument)
 {
   if (**data != '\0')
   {
@@ -72,7 +95,8 @@ void add_option (char **data, const char *option, const char *argument)
 
 
 
-char *evaluate_ip (const char *host)
+char *
+evaluate_ip (const char *host)
 {
   struct hostent *hptr;
   char ip_name[32];
@@ -93,7 +117,30 @@ char *evaluate_ip (const char *host)
 
 
 
-char *current_uid ()
+char *
+fullpath (const char *p)
+{
+  char path[MAXPATHLEN];
+  
+  if (strlen (p) > (MAXPATHLEN - 1))
+  {
+    fprintf (stderr, "Path '%s' is too long\n", p);
+    exit (1);
+  }
+  
+  if (realpath (p, path) == NULL)
+  {
+    fprintf (stderr, "Failed to find real path for '%s'\n", p);
+    exit (1);
+  }
+  
+  return strdup (path);
+}
+
+
+
+char *
+current_uid ()
 {
   static char buffer[32];
   
@@ -104,7 +151,8 @@ char *current_uid ()
 
 
 
-char *current_gid ()
+char *
+current_gid ()
 {
   static char buffer[32];
   
@@ -115,7 +163,8 @@ char *current_gid ()
 
 
 
-char *current_umask ()
+char *
+current_umask ()
 {
   static char buffer[32];
   unsigned long mask;
@@ -123,14 +172,17 @@ char *current_umask ()
   mask = umask (0);
   umask (mask);               // stupid - there is no getter-only for umask
   
-  sprintf (buffer, "%lu", (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) & (~mask));
+  sprintf (buffer, "%lu", (S_IRUSR | S_IWUSR |
+                           S_IRGRP | S_IWGRP |
+			   S_IROTH | S_IWOTH) & (~mask));
   
   return buffer;
 }
 
 
 
-char *current_dmask ()
+char *
+current_dmask ()
 {
   static char buffer[32];
   unsigned long mask;
@@ -155,7 +207,8 @@ char *current_dmask ()
 
 
 
-char *convert_uid (char * uid)
+char *
+convert_uid (char * uid)
 {
   static char buffer[32];
 
@@ -178,7 +231,8 @@ char *convert_uid (char * uid)
 
 
 
-char *convert_gid (char * gid)
+char *
+convert_gid (char * gid)
 {
   static char buffer[32];
 
@@ -201,7 +255,8 @@ char *convert_gid (char * gid)
 
 
 
-char *convert_umask (char * umask)
+char *
+convert_umask (char * umask)
 {
   static char buffer[32];
   unsigned long mask;
@@ -215,9 +270,26 @@ char *convert_umask (char * umask)
 
 
 
-int parse_args (int argc, char *argv[], char **data, char **share, int id_change_allowed)
+int
+parse_args (int argc, char *argv[], char **mount_point,
+            char **data, char **share, int id_change_allowed)
 {
+  static struct option options[] = {
+                                     { "server",   required_argument, 0, 's'},
+                                     { "root",     required_argument, 0, 'r'},
+				     { "project",  required_argument, 0, 'm'},
+				     { "user",     required_argument, 0, 'u'},
+				     { "password", required_argument, 0, 'p'},
+				     { "uid",      required_argument, 0, 'i'},
+				     { "gid",      required_argument, 0, 'g'},
+				     { "filemask", required_argument, 0, 'f'},
+				     { "dirmask",  required_argument, 0, 'd'},
+				     { "help",     no_argument,	      0, 'h'},
+				     { "version",  no_argument,	      0, 'v'},
+				     { 0,          no_argument,       0, 0 }
+				   };
   int opt;
+  int index = 0;
   int server_found = 0;
   int module_found = 0;
   int uid_found = 0;
@@ -230,11 +302,25 @@ int parse_args (int argc, char *argv[], char **data, char **share, int id_change
 
   *data = malloc (1);
   **data = '\0';
-  
-  while ((opt = getopt (argc, argv, "s:r:m:u:p:i:g:f:d:")) != EOF)
+
+  while ((opt = getopt_long (argc, argv,
+                             "-s:r:m:u:p:i:g:f:d:h",
+			     options, &index)) != -1)
   {
     switch (opt)
     {
+      case 1:
+        if (*mount_point != NULL)
+	{
+          fprintf (stderr, "mount point ('%s') is doubly defined\n", optarg);
+	  
+	  return -1;
+	}
+	
+	*mount_point = fullpath (optarg);
+        add_option (data, "mount", *mount_point);
+        break;
+	
       case 's':
 	if (isdigit (*optarg) == 0)
 	{
@@ -298,7 +384,7 @@ int parse_args (int argc, char *argv[], char **data, char **share, int id_change
 	  else
 	  {
             fprintf (stderr, "group id '%s' does not exist\n", optarg);
-	  
+
 	    return -1;
 	  }
 	else
@@ -315,11 +401,18 @@ int parse_args (int argc, char *argv[], char **data, char **share, int id_change
 	dmask_found = 1;
         break;
 	
+      case 'h':
+	return -1;
+	
+      case 'v':
+        program_version ();
+	exit (0);
+
       default:
         return -1;
     }
   }
-  
+
   if (server_found == 0)
   {
     fprintf (stderr, "No cvs pserver given\n");
@@ -359,28 +452,8 @@ int parse_args (int argc, char *argv[], char **data, char **share, int id_change
 
 
 
-char *fullpath (const char *p)
-{
-  char path[MAXPATHLEN];
-  
-  if (strlen (p) > (MAXPATHLEN - 1))
-  {
-    fprintf (stderr, "Path '%s' is too long\n", p);
-    exit (1);
-  }
-  
-  if (realpath (p, path) == NULL)
-  {
-    fprintf (stderr, "Failed to find real path for '%s'\n", p);
-    exit (1);
-  }
-  
-  return strdup (path);
-}
-
-
-
-void add_cache_option (char **data)
+void
+add_cache_option (char **data)
 {
   struct passwd *uidentry;
   char *configdir;
@@ -412,7 +485,8 @@ void add_cache_option (char **data)
 
 
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
   char *data;
   char *share;
@@ -424,7 +498,7 @@ int main(int argc, char *argv[])
   int ownership_setting_allowed;
   char *cache_dir;
   
-  if ((argc < 2) || (argv[1][0] == '-'))
+  if ((argc < 2) /* || (argv[1][0] == '-') */ )
   {
     help ();
     exit (1);
@@ -441,18 +515,13 @@ int main(int argc, char *argv[])
   else
     ownership_setting_allowed = 0;
   
-  mount_point = fullpath (argv[1]);
-  
-  ++argv;
-  --argc;
-  
-  if (parse_args (argc, argv, &data, &share, ownership_setting_allowed) != 0)
+  mount_point = NULL;
+  if (parse_args (argc, argv, &mount_point,
+                  &data, &share, ownership_setting_allowed) != 0)
   {
     help ();
     return -1;
   }
-
-  add_option (&data, "mount", mount_point);
 
   add_cache_option (&data);
 
@@ -461,7 +530,7 @@ int main(int argc, char *argv[])
   
   flags = 0xC0ED0000; /* MS_MGC_VAL */
   
-  if (mount (share, argv[0], "cvsfs", flags, (char *) data) < 0)
+  if (mount (share, mount_point, "cvsfs", flags, (char *) data) < 0)
   {
     switch (errno)
     {

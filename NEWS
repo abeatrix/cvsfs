@@ -1,3 +1,8 @@
+Version 1.0.6:
+
+Revamp the source code to be in line with GNU coding standards.
+
+
 Version 1.0.5:
 
 Automake and autoconf support added. Thanks to Johan Rydberg.

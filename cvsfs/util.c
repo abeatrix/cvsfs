@@ -32,7 +32,9 @@
 
 
 
-char * cvsfs_skip_whitespace (char * str)
+/* skips whitespaces (blancs and tabs) */
+char *
+cvsfs_skip_whitespace (char * str)
 {
   for (; (*str != '\0') && (*str == ' ') && (*str == '\t'); ++str);
   
@@ -41,7 +43,9 @@ char * cvsfs_skip_whitespace (char * str)
 
 
 
-char * cvsfs_rtrim (char * str)
+/* trim the end of the string (kills blancs and tabs) */
+char *
+cvsfs_rtrim (char * str)
 {
   int len;
   char *ptr;

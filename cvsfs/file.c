@@ -59,28 +59,32 @@ struct address_space_operations cvsfs_file_aops = {
 
 					
 
-static int cvsfs_file_open (struct inode * inode, struct file * file)
+static int
+cvsfs_file_open (struct inode * inode, struct file * file)
 {
   return 0;
 }
 
 
 
-static int cvsfs_file_release (struct inode * inode, struct file * file)
+static int
+cvsfs_file_release (struct inode * inode, struct file * file)
 {
   return 0;
 }
 
 
 
-//static int cvsfs_file_ioctl (struct inode * inode, struct file * file, unsigned int, unsigned long)
+//static int
+//cvsfs_file_ioctl (struct inode * inode, struct file * file, unsigned int, unsigned long)
 //{
 //  return 0;
 //}
 
 
 
-static int cvsfs_file_permission (struct inode * inode, int mask)
+static int
+cvsfs_file_permission (struct inode * inode, int mask)
 {
   int mode = inode->i_mode;
 
@@ -94,7 +98,8 @@ static int cvsfs_file_permission (struct inode * inode, int mask)
 
 
 
-static int cvsfs_file_readpage (struct file * file, struct page * page)
+static int
+cvsfs_file_readpage (struct file * file, struct page * page)
 {
   struct dentry *dentry = file->f_dentry;
   char *buffer;
