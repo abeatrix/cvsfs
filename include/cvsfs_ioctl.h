@@ -23,6 +23,31 @@
  *     Return: Parameter filled with version string                        *
  *             Return value >= 0 ... size of string                        *
  *                          < 0 .... error code                            *
+ *                                                                         *
+ *   CVSFS_IOC_VCHECKOUT - check-out file with current version             *
+ *     Entry:  none                                                        *
+ *     Return: Return value >= 0 ... size of string                        *
+ *                          < 0 .... error code                            *
+ *                                                                         *
+ *   CVSFS_IOCPVCHECKOUT - check-out file of specific version              *
+ *     Entry:  Parameter contains the version to obtain                    *
+ *     Return: Return value >= 0 ... size of string                        *
+ *                          < 0 .... error code                            *
+ *                                                                         *
+ *   CVSFS_IOC_VCHECKIN - check-in file                                    *
+ *     Entry:  none                                                        *
+ *     Return: Return value >= 0 ... size of string                        *
+ *                          < 0 .... error code                            *
+ *                                                                         *
+ *   CVSFS_IOCPVCHECKIN - check-in file to specific version                *
+ *     Entry:  Parameter contains the version to obtain                    *
+ *     Return: Return value >= 0 ... size of string                        *
+ *                          < 0 .... error code                            *
+ *                                                                         *
+ *   CVSFS_IOC_VUPDATE - update file with the one from CVS                 *
+ *     Entry:  none                                                        *
+ *     Return: Return value >= 0 ... size of string                        *
+ *                          < 0 .... error code                            *
  ***************************************************************************/
 
 #ifndef __CVSFS_IOCTL_H__
@@ -37,6 +62,9 @@
 #define CVSFS_GET_VERSION	1	/* obtain version item */
 #define CVSFS_CHECKOUT		2	/* check out file */
 #define CVSFS_CHECKOUT_VERSION	3	/* check out specific file version */
+#define CVSFS_CHECKIN		4	/* check in file */
+#define CVSFS_CHECKIN_VERSION	5	/* check in to specific file version */
+#define CVSFS_UPDATE		6	/* update a file */
 
 /* types to be used as parameters */
 typedef struct
@@ -63,6 +91,9 @@ typedef struct
 #define CVSFS_IOC_XVERSION	_IOR (CVSFS_IOC_MAGIC, CVSFS_GET_VERSION, limited_string)
 #define CVSFS_IOC_VCHECKOUT	_IO (CVSFS_IOC_MAGIC, CVSFS_CHECKOUT)
 #define CVSFS_IOCPVCHECKOUT	_IOW (CVSFS_IOC_MAGIC, CVSFS_CHECKOUT_VERSION, limited_string)
+#define CVSFS_IOC_VCHECKIN	_IO (CVSFS_IOC_MAGIC, CVSFS_CHECKIN)
+#define CVSFS_IOCPVCHECKIN	_IOW (CVSFS_IOC_MAGIC, CVSFS_CHECKIN_VERSION, limited_string)
+#define CVSFS_IOC_VUPDATE	_IO (CVSFS_IOC_MAGIC, CVSFS_UPDATE)
 
 
 
