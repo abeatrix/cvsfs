@@ -1,3 +1,12 @@
+2001-11-29  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/cvsfs_init.c: add license info 'MODULE_LICENSE("GPL")'
+	* configure.in: increase version number to 1.0.9
+	* cvsfs/Makefile.am: add devfs.c, devfs.h to the files to handle
+        * cvsmnt/main.c: create /dev file after successful mounting
+	* cvsmnt/Makefile.am: additions to allow inclusion of linux/config.h
+	  to allow detection of devfs support in the kernel.
+	  (bad thing, i know, but i don't know how to do that at runtime)
+
 2001-11-28  Petric Frank  <pfrank@gmx.de>
 	* cvsfs/dir.c: add #include <linux/sched.h> to solve compile
 	  compile problems on RedHat installations (reported on 7.0 and 7.2)

@@ -13,11 +13,11 @@ LINK = $(LD) -m elf_i386 -r -o $@
 libdir = /lib/modules/$(KERNEL_VERSION)/kernel/fs/
 
 pkglib_PROGRAMS = cvsfs.o
-cvsfs_o_SOURCES = cvsfs_init.c cache.c commands.c dir.c file.c \
-	inode.c proc.c procfs.c socket.c util.c
+cvsfs_o_SOURCES = cvsfs_init.c cache.c commands.c devfs.c dir.c \
+	file.c inode.c proc.c procfs.c socket.c util.c
 
-noinst_HEADERS = cache.h commands.h cvsfs_config.h dir.h file.h \
-	inode.h procfs.h proc.h socket.h util.h
+noinst_HEADERS = cache.h commands.h cvsfs_config.h devfs.h dir.h \
+	file.h inode.h procfs.h proc.h socket.h util.h
 
 install-exec-local:
 	depmod -a

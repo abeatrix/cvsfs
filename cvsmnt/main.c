@@ -35,6 +35,7 @@
 #include <arpa/inet.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <linux/config.h>
 
 
 
@@ -484,6 +485,55 @@ add_cache_option (char **data)
 }
 
 
+#ifndef CONFIG_DEVFS_FS
+int
+allocate_devfs_node (char * mount_point)
+{
+  FILE *procfs;
+  char *buffer;
+
+  // first read /proc/cvsfs/<mount point>/device to get the major/minor devnbr
+  buffer = malloc (strlen (mount_point) + 20);
+  strcpy (buffer, "/proc/cvsfs");
+  strcat (buffer, mount_point);
+  strcat (buffer, "/device");
+  
+  if ((procfs = fopen (buffer, "r")) != NULL)
+  {
+    char line[64];
+    char *next;
+    int major;
+    int minor;
+
+    // obtain the major/minor device number assigned in the driver    
+    fgets (line, sizeof (line), procfs);
+    fclose (procfs);
+    
+    major = strtol (line, &next, 10);
+    ++next;
+    minor = strtol (next, NULL, 10);
+
+    if ((major != -1) && (minor != -1))
+    {
+      // create the directory in /dev
+      mkdir ("/dev/cvsfs", S_IRUSR | S_IRGRP | S_IROTH |
+                           S_IXUSR | S_IXGRP | S_IXOTH | S_IWUSR);
+
+      // create the device node
+      sprintf (line, "/dev/cvsfs/cvsfs%i", minor);	 
+      unlink (line);				// remove node if existing
+      if (mknod (line, S_IFCHR | S_IRUSR | S_IWUSR, makedev (major, minor)))
+        fprintf (stderr, "cvsmnt: can not allocate device node '%s' - error %s\n",
+                 line, strerror (errno));
+    }
+  }
+  else
+    fprintf (stderr, "cvsmnt: can not open procfs file '%s'\n", buffer);
+
+  free (buffer);
+}
+#endif
+
 
 int
 main(int argc, char *argv[])
@@ -585,8 +635,15 @@ main(int argc, char *argv[])
   }
 
   /* cleanup allocated space */
-  free (mount_point);
   free (data);
+
+#ifndef CONFIG_DEVFS_FS
+  /* allocate the node file in /dev if not already allocated */
+  allocate_devfs_node (mount_point);
+#endif
   
+  /* cleanup allocated space */
+  free (mount_point);
+
   return EXIT_SUCCESS;
 }

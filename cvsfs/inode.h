@@ -48,6 +48,7 @@ struct cvsfs_mount_data
   char			root[CVSFS_MAXPATHLEN];
   char			project[CVSFS_MAXPROJECT];
   char			mountpoint[CVSFS_MAXPATHLEN];
+  int			device_id;
 };
 
 struct cvsfs_sb_info

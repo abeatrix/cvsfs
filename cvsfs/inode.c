@@ -30,6 +30,7 @@
 #include "cache.h"
 #include "proc.h"
 #include "procfs.h"
+#include "devfs.h"
 
 #define CVSFS_SUPER_MAGIC	0xED79ED79
 #define CVSFS_ROOT_INODE	1
@@ -160,8 +161,6 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
     return NULL;
   }
 
-  cvsfs_cache_init ();
-
   memset (info, 0, sizeof (struct cvsfs_sb_info));
 
   sb->u.generic_sbp = info;		/* store network info */
@@ -201,6 +200,8 @@ cvsfs_read_super (struct super_block *sb, void *data, int silent)
 	{
 	  cvsfs_procfs_user_init (info->mnt.mountpoint, sb);
 
+          cvsfs_devfs_user_init (info);
+
           cvsfs_cache_get_dir (info, "/", NULL);
 
 	  printk (KERN_INFO "cvsfs: project '%s' mounted\n", info->mnt.project);
@@ -239,8 +240,12 @@ cvsfs_put_super (struct super_block * sb)
 {
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
 
-  cvsfs_cache_empty ();
-  
+  printk (KERN_DEBUG "cvsfs: put_super - '%s' unmounted\n", info->mnt.mountpoint);
+
+  cvsfs_devfs_user_cleanup (info);
+
+  printk (KERN_DEBUG "cvsfs: put_super - devfs shut down\n");
+
   cvsfs_procfs_user_cleanup (info->mnt.mountpoint);
 
   printk (KERN_INFO "cvsfs: project '%s' unmounted\n", info->mnt.project);

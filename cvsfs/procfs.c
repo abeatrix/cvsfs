@@ -25,6 +25,7 @@
 #include <linux/proc_fs.h>		/* support for /proc file system */
 #include "inode.h"
 #include "util.h"
+#include "devfs.h"
 
 
 
@@ -52,6 +53,7 @@ const char *cvsfs_procfs_root		= "cvsfs";
 const char *cvsfs_procfs_status		= "status";
 const char *cvsfs_procfs_view		= "view";
 const char *cvsfs_procfs_control	= "control";
+const char *cvsfs_procfs_device		= "device";
 
 
 
@@ -60,6 +62,7 @@ static int proc_cvsfs_read_status (char *, char **, off_t, int, int *, void *);
 static int proc_cvsfs_read_view (char *, char **, off_t, int, int *, void *);
 static int proc_cvsfs_write_view (struct file *, const char *, unsigned long, void *);
 static int proc_cvsfs_write_control (struct file *, const char *, unsigned long, void *);
+static int proc_cvsfs_read_device (char *, char **, off_t, int, int *, void *);
 
 
 
@@ -441,7 +444,15 @@ cvsfs_procfs_user_init (const char * root, void * sb)
           element->proc->data = sb;
           element->proc->write_proc = proc_cvsfs_write_control;
 
-          return 0;
+          if ((element = create_child (cvsfs_procfs_device,
+                                       S_IFREG | S_IRUGO, base)) != 0)
+          {
+            element->proc->data = sb;
+            element->proc->read_proc = proc_cvsfs_read_device;
+
+            return 0;
+	  }
+	  remove_child (cvsfs_procfs_control, base);
         }
 	remove_child (cvsfs_procfs_view, base);
       }
@@ -472,6 +483,7 @@ cvsfs_procfs_user_cleanup (const char * root)
       remove_child (cvsfs_procfs_status, base);
       remove_child (cvsfs_procfs_view, base);
       remove_child (cvsfs_procfs_control, base);
+      remove_child (cvsfs_procfs_device, base);
     }
 
     remove_subdir (root, cvsfs_tree);
@@ -495,12 +507,22 @@ proc_cvsfs_read_status (char *buffer, char **start,
   info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
 
   len = sprintf (buffer, "cvsfs running\n");
-  len += sprintf (buffer + len, "  Server ....... %s\n", info->mnt.server);
-  len += sprintf (buffer + len, "  CVS root ..... %s\n", info->mnt.root);
-  len += sprintf (buffer + len, "  Project ...... %s\n", info->mnt.project);
-  len += sprintf (buffer + len, "  Mountpoint ... %s\n", info->mnt.mountpoint);
-  len += sprintf (buffer + len, "  Fileattribs .. %04o\n", (info->mnt.file_mode & 0xfff));
-  len += sprintf (buffer + len, "  Dir attribs .. %04o\n", (info->mnt.dir_mode & 0xfff));
+  len += sprintf (buffer + len, "  Server ................ %s\n", info->mnt.server);
+  len += sprintf (buffer + len, "  CVS root .............. %s\n", info->mnt.root);
+  len += sprintf (buffer + len, "  Project ............... %s\n", info->mnt.project);
+  len += sprintf (buffer + len, "  Mountpoint ............ %s\n", info->mnt.mountpoint);
+  len += sprintf (buffer + len, "  Fileattribs ........... %04o\n", (info->mnt.file_mode & 0xfff));
+  len += sprintf (buffer + len, "  Dir attribs ........... %04o\n", (info->mnt.dir_mode & 0xfff));
+  if (info->mnt.device_id >= 0)
+  {
+    len += sprintf (buffer + len, "  Device ................ /dev/cvsfs/cvsfs%i\n", info->mnt.device_id);
+#ifdef CONFIG_DEVFS_FS
+#else
+    len += sprintf (buffer + len, "  Device (major/minor id) %i/%i\n", cvsfs_devfs_get_major (), info->mnt.device_id);
+#endif
+  }
+  else
+    len += sprintf (buffer + len, "  No Device (out of numbers)\n");
 
   return len;
 }
@@ -689,3 +711,23 @@ proc_cvsfs_write_control (struct file *file, const char *buffer,
   return len;
 }
 
+
+
+static int
+proc_cvsfs_read_device (char *buffer, char **start,
+                        off_t offset, int size, int *eof, void *data)
+{
+  int len;
+  struct super_block *sb;
+  struct cvsfs_sb_info *info;
+
+  if (data == NULL)
+    return 0;
+
+  sb = (struct super_block *) data;
+  info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+
+  len = sprintf (buffer, "%i:%i\n", cvsfs_devfs_get_major (), info->mnt.device_id);
+
+  return len;
+}

@@ -1,3 +1,7 @@
+Version 1.0.9:
+Add license info to the kernel module.
+Add /dev and devfs support (latter untested).
+
 Version 1.0.8:
 Fix compile errors of the cvsfs kernel module on RedHat installations.
 The errors were reported for RedHat 7.0 and 7.2. Others may also be
