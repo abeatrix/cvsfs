@@ -23,4 +23,4 @@ AC_TYPE_OFF_T
 dnl Checks for library functions.
 AC_CHECK_FUNCS(mktime strdup strerror strtoul)
 
-AC_OUTPUT(cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile)
+AC_OUTPUT(cvsfs/Makefile cvsfsd/Makefile cvsumount/Makefile Makefile cvsmnt/Makefile cvsmount/Makefile init/Makefile)

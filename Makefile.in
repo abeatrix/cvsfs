@@ -65,7 +65,9 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
-SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount
+EXTRA_DIST = makedevs rmdevs
+
+SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount init
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 

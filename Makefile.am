@@ -1,3 +1,5 @@
 # Process this file with automake to produce a Makefile.in
 
-SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount
+EXTRA_DIST = makedevs rmdevs
+
+SUBDIRS = cvsfs cvsfsd cvsmnt cvsmount cvsumount init
