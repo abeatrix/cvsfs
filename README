@@ -1,0 +1,67 @@
+This is the first attempt to provide a file system for cvs.
+Usage:
+------
+  mount -t cvsfs [-o options] //<cvs-pserver>/<module> <mount point>
+  
+  <cvs-pserver>       The cvs pserver to access. This may be a hostname
+                      (with or without domain) or a ip-address.
+		      Only ip v4 is actually supported !
+  <mount point>       The directory where the cvs tree is to be mounted.
+
+Options:
+  user=<username>     The username to be used for authentication at the
+                      cvs-pserver. If not given the user 'anaonymous' is
+		      applied.
+  password=<secret>   The password for the username given above. If omitted
+                      the a empty password is applied.
+  cvsroot=<root>      The cvs root directory. If omitted then /cvsroot is
+                      used as default.
+
+		      
+If you specify for the actual cvs tool the environment variable
+
+  CVSROOT=:pserver:humbia@sorceforge.net:/cvsroot/project
+  
+the password is 'secret', the project is named 'myproject' and the moutpoint
+will be /humbia then the following command is required:
+
+  mount -t cvsfs -o user=humbia,password=secret,cvsroot=/cvsroot/project \
+        //sorceforge.net/myproject /humbia
+  
+
+Environment:
+------------
+Tested (and developed) with SuSE 7.1
+mount has version (mount -V) mount-2.10q. This mount version looks for unknown
+file systems to locate /bin/mount.<filesystem>. It this file is found it is
+executed with the parameters passed to mount. I don't know whether or not
+earlier versions on mount have this behaviour. If your version does not do
+this search then you can use smbmnt instead.
+The module supports only kernels 2.4.x
+The vfs module has build problems on nonstandard linux builds with versions
+like used for SuSE 7.1 (here: 2.4.0-4GB). It refuses to load (can be tested
+with 'modprobe cvsfs') due to not matching kernel versions (expects 2.4.0 but
+system says it is 2.4.0-4GB). Actually i am rather new to kernel programming -
+so a hint to solve this problem is welcome.
+The build process expects the kernel source is installed at /usr/src/linux
+
+
+Limitations:
+------------
+This tool actually only retrieves the file names and directories. To assign
+the sizes and dates i have to make some more investigation (support is highly
+welcome).
+There are some timing limits inside the kernel module for responses from
+the cvs-pserver. They may exceed for slow remote machines. Have a look to
+cvsfs/proc.c to change this limitation.
+Only the pserver method of cvs is supported. May be extended later.
+
+
+Resulting files:
+----------------
+This files a copied by 'make install'. You must be root to do this.
+
+/lib/modules/<kernel-version>/kernel/fs/cvsfs/cvsfs.o
+/sbin/mount.cvsfs
+/usr/bin/cvsmount
+/usr/bin/cvsmnt
