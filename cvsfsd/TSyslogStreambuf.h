@@ -19,6 +19,11 @@
 #define __TSYSLOGSTREAMBUF_H__
 
 #include <string>
+#ifdef HAVE_STREAMBUF
+#include <streambuf>
+#else
+#include <streambuf.h>
+#endif
 
 // forward reference
 class TSyslogFile;

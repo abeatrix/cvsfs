@@ -50,8 +50,8 @@ class TCacheSystem
 
     virtual bool FileAttribute (const std::string &, TFileData &) const = 0;
 
-    virtual std::ifstream * In (const std::string &, int = 0) const = 0;
-    virtual std::ofstream * Out (const std::string &, int = 0) const = 0;
+    virtual std::ifstream * In (const std::string &, std::ios::openmode = std::ios::openmode(0)) const = 0;
+    virtual std::ofstream * Out (const std::string &, std::ios::openmode = std::ios::openmode(0)) const = 0;
 
   protected:
     bool TreeLoad (TDirectory &, const std::string &) const;

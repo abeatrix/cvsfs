@@ -142,7 +142,7 @@ void TCacheSystemCheckedout::FullPath (const std::string & path, std::string & f
 
 
 
-std::ifstream * TCacheSystemCheckedout::In (const std::string & path, int mode) const
+std::ifstream * TCacheSystemCheckedout::In (const std::string & path, std::ios::openmode mode) const
 {
   // Prerequisite: File must exist
   // must be created previously by a call to CreateFile
@@ -154,12 +154,12 @@ std::ifstream * TCacheSystemCheckedout::In (const std::string & path, int mode) 
   if (!HaveFile (newpath))
     return 0;
 
-  return new std::ifstream ((fAbsoluteBase + "/" + newpath).c_str (), mode | ios::in);
+  return new std::ifstream ((fAbsoluteBase + "/" + newpath).c_str (), mode | std::ios::in);
 }
 
 
 
-std::ofstream * TCacheSystemCheckedout::Out (const std::string & path, int mode) const
+std::ofstream * TCacheSystemCheckedout::Out (const std::string & path, std::ios::openmode mode) const
 {
   // Prerequisite: File must exist
   // must be created previously by a call to CreateFile
@@ -171,7 +171,7 @@ std::ofstream * TCacheSystemCheckedout::Out (const std::string & path, int mode)
   if (!HaveFile (newpath))
     return 0;
 
-  return new std::ofstream ((fAbsoluteBase + "/" + newpath).c_str (), mode | ios::out);
+  return new std::ofstream ((fAbsoluteBase + "/" + newpath).c_str (), mode | std::ios::out);
 }
 
 

@@ -190,7 +190,7 @@ bool TCacheManager::FileAttribute (size_type cacheidx, const std::string & name,
 
 
 
-std::ifstream * TCacheManager::In (size_type cacheidx, const std::string & name, int mode) const
+std::ifstream * TCacheManager::In (size_type cacheidx, const std::string & name, std::ios::openmode mode) const
 {
   if ((cacheidx < 0) || (cacheidx >= fCaches.size ()))
     return 0;
@@ -200,7 +200,7 @@ std::ifstream * TCacheManager::In (size_type cacheidx, const std::string & name,
 
 
 
-std::ofstream * TCacheManager::Out (size_type cacheidx, const std::string & name, int mode) const
+std::ofstream * TCacheManager::Out (size_type cacheidx, const std::string & name, std::ios::openmode mode) const
 {
   if ((cacheidx < 0) || (cacheidx >= fCaches.size ()))
     return 0;

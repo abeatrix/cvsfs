@@ -39,8 +39,8 @@ class TCacheSystemCheckedout : public TCacheSystem
 
     virtual bool FileAttribute (const std::string &, TFileData &) const;
 
-    virtual std::ifstream * In (const std::string &, int = 0) const;
-    virtual std::ofstream * Out (const std::string &, int = 0) const;
+    virtual std::ifstream * In (const std::string &, std::ios::openmode = std::ios::openmode(0)) const;
+    virtual std::ofstream * Out (const std::string &, std::ios::openmode = std::ios::openmode(0)) const;
 
   private:
     virtual void FullPath (const std::string &, std::string &) const;

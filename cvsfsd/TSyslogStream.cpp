@@ -34,7 +34,7 @@ const int LevelMapping[8]	= { LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR,
 
 
 TSyslogStream::TSyslogStream (TSyslogFile & file, LogLevel logLevel)
-: ostream (new TSyslogStreambuf (file, LevelMapping[logLevel]))
+: std::ostream (new TSyslogStreambuf (file, LevelMapping[logLevel]))
 {
 }
 

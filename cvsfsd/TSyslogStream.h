@@ -24,21 +24,10 @@
 class TSyslogFile;
 
 
-
-class TSyslogStream : public ostream
+class TSyslogStream : public std::ostream
 {
   public:
-    typedef enum
-    {
-      Emergency = 0,
-      Alert,
-      Critical,
-      Error,
-      Warning,
-      Notice,
-      Info,
-      Debug
-    } LogLevel;
+    typedef enum { Emergency = 0, Alert, Critical, Error, Warning, Notice, Info, Debug } LogLevel;
 
     TSyslogStream (TSyslogFile &, LogLevel);
 

@@ -113,7 +113,7 @@ bool TCacheSystem::FileAttribute (const std::string & path, TFileData & data) co
 
 
 
-std::ifstream * TCacheSystem::In (const std::string & path, int mode) const
+std::ifstream * TCacheSystem::In (const std::string & path, std::ios::openmode mode) const
 {
   // Prerequisite: File must exist
   // must be created previously by a call to CreateFile
@@ -121,12 +121,12 @@ std::ifstream * TCacheSystem::In (const std::string & path, int mode) const
   if (!HaveFile (path))
     return 0;
 
-  return new std::ifstream ((fAbsoluteBase + "/" + path).c_str (), mode | ios::in);
+  return new std::ifstream ((fAbsoluteBase + "/" + path).c_str (), mode | std::ios::in);
 }
 
 
 
-std::ofstream * TCacheSystem::Out (const std::string & path, int mode) const
+std::ofstream * TCacheSystem::Out (const std::string & path, std::ios::openmode mode) const
 {
   // Prerequisite: File must exist
   // must be created previously by a call to CreateFile
@@ -134,7 +134,7 @@ std::ofstream * TCacheSystem::Out (const std::string & path, int mode) const
   if (!HaveFile (path))
     return 0;
 
-  return new std::ofstream ((fAbsoluteBase + "/" + path).c_str (), mode | ios::out);
+  return new std::ofstream ((fAbsoluteBase + "/" + path).c_str (), /*mode |*/ std::ios::out);
 }
 
 
