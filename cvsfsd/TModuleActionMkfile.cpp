@@ -48,60 +48,60 @@ TModuleActionMkfile::~TModuleActionMkfile ()
 bool TModuleActionMkfile::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
+  std::ostrstream buffer;
   char buf[512];
   int size;
 
   log->debug << "in mkfile::doit" << std::endl;
 
-  if ((size = readLine (buf, sizeof (buf))) == -1)
-    return true;
-
-  log->debug << "line: " << buf << std::endl;
-
-  if (size != 0)
+  if ((size = readLine (buf, sizeof (buf))) != -1)
   {
-    std::ostrstream buffer;
-    std::string path = buf;
-    std::string version;
+    log->debug << "line: " << buf << std::endl;
 
-    while ((path.length () > 0) && (*(path.rbegin ()) == ' '))
-      path.erase (path.length () - 1, 1);
-
-    std::string::size_type pos = path.find (' ');
-    if (pos != std::string::npos)
+    if (size != 0)
     {
-      std::string modestr = path;
-      int mode;
+      std::string path = buf;
+      std::string version;
 
-      modestr.erase (0, pos + 1);
-      path.erase (pos);
-      mode = atoi (modestr.c_str ());
+      while ((path.length () > 0) && (*(path.rbegin ()) == ' '))
+        path.erase (path.length () - 1, 1);
 
-      pos = path.find ("@@");
+      std::string::size_type pos = path.find (' ');
       if (pos != std::string::npos)
       {
-        version = path;
-        version.erase (0, pos + 2);
+        std::string modestr = path;
+        int mode;
+
+        modestr.erase (0, pos + 1);
         path.erase (pos);
-      }
+        mode = atoi (modestr.c_str ());
 
-      log->debug << "make file '" << path << "' with mode " << mode << std::endl;
+        pos = path.find ("@@");
+        if (pos != std::string::npos)
+        {
+          version = path;
+          version.erase (0, pos + 2);
+          path.erase (pos);
+        }
 
-      const TEntry * entry = interface.GetFullEntry (path, version);
+        log->debug << "make file '" << path << "' with mode " << mode << std::endl;
 
-      if (entry == 0)
-      {
-        entry = interface.MakeFile (path, version, mode);
-        if (entry != 0)
-          entry->operator << (buffer);
+        const TEntry * entry = interface.GetFullEntry (path, version);
+
+        if (entry == 0)
+        {
+          entry = interface.MakeFile (path, version, mode);
+          if (entry != 0)
+            entry->operator << (buffer);
+        }
       }
     }
-
-    if (buffer.pcount () != 0)
-      writeData (buffer.str (), buffer.pcount ());
-    else
-      writeDummy ();
   }
+
+  if (buffer.pcount () != 0)
+    writeData (buffer.str (), buffer.pcount ());
+  else
+    writeDummy ();
 
   return false;		// continue with the next command
 }

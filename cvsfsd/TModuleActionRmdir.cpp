@@ -48,49 +48,47 @@ TModuleActionRmdir::~TModuleActionRmdir ()
 bool TModuleActionRmdir::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
+  std::ostrstream buffer;
   char buf[512];
   int size;
 
   log->debug << "in rmdir::doit" << std::endl;
 
-  if ((size = readLine (buf, sizeof (buf))) == -1)
-    return true;
-
-  log->debug << "line: " << buf << std::endl;
-
-  if (size != 0)
+  if ((size = readLine (buf, sizeof (buf))) != -1)
   {
-    std::ostrstream buffer;
-    std::string path = buf;
-    std::string version;
+    log->debug << "line: " << buf << std::endl;
 
-    while ((path.length () > 0) && (*(path.rbegin ()) == ' '))
-      path.erase (path.length () - 1, 1);
-
-    std::string::size_type pos = path.find ("@@");
-    if (pos != std::string::npos)
+    if (size != 0)
     {
-      version = path;
-      version.erase (0, pos + 2);
-      path.erase (pos);
+      std::string path = buf;
+      std::string version;
+
+      while ((path.length () > 0) && (*(path.rbegin ()) == ' '))
+        path.erase (path.length () - 1, 1);
+
+      std::string::size_type pos = path.find ("@@");
+      if (pos != std::string::npos)
+      {
+        version = path;
+        version.erase (0, pos + 2);
+        path.erase (pos);
+      }
+
+      log->debug << "remove directory '" << path << "'" << std::endl;
+
+      const TEntry * entry = interface.GetFullEntry (path, version);
+
+      if (entry == 0)
+        buffer << ENOENT;
+      else
+        buffer << interface.RemoveDirectory (path, version);
     }
-
-    log->debug << "remove directory '" << path << "'" << std::endl;
-
-    const TEntry * entry = interface.GetFullEntry (path, version);
-
-    if (entry == 0)
-      buffer << ENOENT;
-    else
-    {
-      buffer << interface.RemoveDirectory (path, version);
-    }
-
-    if (buffer.pcount () != 0)
-      writeData (buffer.str (), buffer.pcount ());
-    else
-      writeDummy ();
   }
+
+  if (buffer.pcount () != 0)
+    writeData (buffer.str (), buffer.pcount ());
+  else
+    writeDummy ();
 
   return false;		// continue with the next command
 }

@@ -46,59 +46,66 @@ TModuleActionPut::~TModuleActionPut ()
 bool TModuleActionPut::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
+  std::ostrstream result;
   char buf[512];
   int size;
 
   log->debug << "in put::doit" << std::endl;
 
-  if ((size = readItem (buf, sizeof (buf))) == -1)
-    return true;
-
-  long long start = strtoll (buf, 0, 0);
-
-  if ((size = readItem (buf, sizeof (buf))) == -1)
-    return true;
-
-  int count = atoi (buf);
-
-  if ((size = readItem (buf, sizeof (buf))) == -1)
-    return true;
-
-  std::string name = buf;
-
-  log->debug << "line: " << start << " " << count << " " << name << std::endl;
-
-  char *data = new char[count];
-
-  if (!data)
-    return true;
-
-  if (readData (data, count) == count)
+  if ((size = readItem (buf, sizeof (buf))) != -1)
   {
-    std::string version;
-    std::string::size_type pos;
+    loff_t start = strtoll (buf, 0, 0);
 
-    if ((pos = name.find ("@@")) != std::string::npos)
+    if ((size = readItem (buf, sizeof (buf))) != -1)
     {
-      version = name;
-      version.erase (0, pos + 2);
-      name.erase (pos);
+      int count = atoi (buf);
+
+      if ((size = readItem (buf, sizeof (buf))) != -1)
+      {
+        std::string name = buf;
+
+        log->debug << "line: " << start << " " << count << " " << name << std::endl;
+
+        char *data = new char[count];
+
+        if (data)
+        {
+          if (readData (data, count) == count)
+          {
+            std::string version;
+            std::string::size_type pos;
+
+            if ((pos = name.find ("@@")) != std::string::npos)
+            {
+              version = name;
+              version.erase (0, pos + 2);
+              name.erase (pos);
+            }
+
+            // values stored:
+            //   start ...... start write position
+            //   count ...... number of bytes to write
+            //   name ....... file name (absolute) w/o version number
+            //   version .... if not NULL - version of file requested
+
+            result << interface.PutFile (name, version, start, count, data);
+          }
+          else
+            log->error << "put:doit - too less bytes transferred (required: "
+                       << count << ")" << std::endl;
+
+          delete [] data;
+        }
+        else
+          log->error << "put:doit - memory squeeze" << std::endl;
+      }
     }
-
-    // values stored:
-    //   start ...... start write position
-    //   count ...... number of bytes to write
-    //   name ....... file name (absolute) w/o version number
-    //   version .... if not NULL - version of file requested
-
-    std::ostrstream result;
-
-    result << interface.PutFile (name, version, start, count, data);
-
-    writeData (result.str (), result.pcount ());
   }
 
-  delete [] data;
+  if (result.pcount () != 0)
+    writeData (result.str (), result.pcount ());
+  else
+    writeDummy ();
 
   return false;		// continue with the next command
 }

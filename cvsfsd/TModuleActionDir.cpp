@@ -45,55 +45,55 @@ TModuleActionDir::~TModuleActionDir ()
 bool TModuleActionDir::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
+  bool dataWritten = false;
   char buf[512];
   char *dir;
   int size;
 
   log->debug << "in dir::doit" << std::endl;
   
-  if ((size = readLine (buf, sizeof (buf))) == -1)
-    return true;
-
-  log->debug << "line: " << buf << std::endl;
-
-  while ((size > 0) && (buf[size - 1] == ' '))
+  if ((size = readLine (buf, sizeof (buf))) != -1)
   {
-    --size;
-    buf[size] = '\0';
-  }
+    log->debug << "line: " << buf << std::endl;
 
-  if ((size != 0) && ((dir = strchr (buf, ' ')) != NULL))
-  {
-    int index;
-    bool dataWritten = false;
-  
-    *dir = '\0';
-    ++dir;
-
-    index = atoi (buf);
-
-    // <dir> contains the directory in question
-    // <index> is the sequence number of the entry
-    //         only values above 1 should be treated
-    //           0 is reserved for '.'
-    //           1 is reserved for '..'
-    //         these are already treated by the vfs kernel module
-
-    if (index >= 2)
+    while ((size > 0) && (buf[size - 1] == ' '))
     {
-      const TEntry * entry = interface.GetEntry (dir, index - 2);
-
-      if (entry != 0)
-      {
-        writeData (entry->GetName ());
-
-	dataWritten = true;
-      }
+      --size;
+      buf[size] = '\0';
     }
 
-    if (!dataWritten)
-      writeDummy ();
+    if ((size != 0) && ((dir = strchr (buf, ' ')) != NULL))
+    {
+      int index;
+
+      *dir = '\0';
+      ++dir;
+
+      index = atoi (buf);
+
+      // <dir> contains the directory in question
+      // <index> is the sequence number of the entry
+      //         only values above 1 should be treated
+      //           0 is reserved for '.'
+      //           1 is reserved for '..'
+      //         these are already treated by the vfs kernel module
+
+      if (index >= 2)
+      {
+        const TEntry * entry = interface.GetEntry (dir, index - 2);
+
+        if (entry != 0)
+        {
+          writeData (entry->GetName ());
+
+	  dataWritten = true;
+        }
+      }
+    }
   }
+
+  if (!dataWritten)
+    writeDummy ();
 
   return false;		// continue with the next command
 }

@@ -45,83 +45,87 @@ TModuleActionGet::~TModuleActionGet ()
 bool TModuleActionGet::doit (TCvsInterface & interface)
 {
   TSyslog *log = TSyslog::instance ();
+  bool dataWritten = false;
   char buf[512];
   char *count;
   int size;
 
   log->debug << "in get::doit" << std::endl;
   
-  if ((size = readLine (buf, sizeof (buf))) == -1)
-    return true;
-
-  log->debug << "line: " << buf << std::endl;
-
-  while ((size > 0) && (buf[size - 1] == ' '))
+  if ((size = readLine (buf, sizeof (buf))) != -1)
   {
-    --size;
-    buf[size] = '\0';
-  }
+    log->debug << "line: " << buf << std::endl;
 
-  if ((size != 0) && ((count = strchr (buf, ' ')) != NULL))
-  {
-    char *ptr;
-    unsigned long start;
-
-    *count = '\0';
-    ++count;
-    
-    start = strtoul (buf, 0, 0);
-
-    if ((ptr = strchr (count, ' ')) != NULL)
+    while ((size > 0) && (buf[size - 1] == ' '))
     {
-      std::string::size_type pos;
-      int maxbytes;
+      --size;
+      buf[size] = '\0';
+    }
 
-      *ptr = '\0';
-      ++ptr;
+    if ((size != 0) && ((count = strchr (buf, ' ')) != NULL))
+    {
+      char *ptr;
+      unsigned long start;
 
-      maxbytes = atoi (count);
+      *count = '\0';
+      ++count;
+    
+      start = strtoul (buf, 0, 0);
 
-      std::string name = ptr;
-      std::string version;
-
-      if ((pos = name.find (' ')) != std::string::npos)
+      if ((ptr = strchr (count, ' ')) != NULL)
       {
-        version = name;
-        version.erase (0, pos + 1);
-        name.erase (pos);
-      }
+        std::string::size_type pos;
+        int maxbytes;
 
-      if ((pos = name.find ("@@")) != std::string::npos)
-      {
-        if (version.length () == 0)
+        *ptr = '\0';
+        ++ptr;
+
+        maxbytes = atoi (count);
+
+        std::string name = ptr;
+        std::string version;
+
+        if ((pos = name.find (' ')) != std::string::npos)
         {
           version = name;
-          version.erase (0, pos + 2);
+          version.erase (0, pos + 1);
+          name.erase (pos);
         }
 
-        name.erase (pos);
+        if ((pos = name.find ("@@")) != std::string::npos)
+        {
+          if (version.length () == 0)
+          {
+            version = name;
+            version.erase (0, pos + 2);
+          }
+
+          name.erase (pos);
+        }
+
+        // values stored:
+        //   start ...... start read position
+        //   maxbytes ... max number of bytes to read
+        //   name ....... file name (absolute) w/o version number
+        //   version .... if not NULL - version of file requested
+
+        char *buffer = new char[maxbytes];
+
+        int received = interface.GetFile (name, version, start, maxbytes, buffer);
+        if (received > 0)
+        {
+          writeData (buffer, received);
+
+          dataWritten = true;
+        }
+
+        delete [] buffer;
       }
-
-      // values stored:
-      //   start ...... start read position
-      //   maxbytes ... max number of bytes to read
-      //   name ....... file name (absolute) w/o version number
-      //   version .... if not NULL - version of file requested
-
-      char *buffer = new char[maxbytes];
-
-      int received = interface.GetFile (name, version, start, maxbytes, buffer);
-      if (received > 0)
-        writeData (buffer, received);
-      else
-        writeDummy ();
-
-      delete [] buffer;
     }
-    else
-      writeDummy ();
   }
+
+  if (!dataWritten)
+   writeDummy ();
 
   return false;		// continue with the next command
 }
