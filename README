@@ -103,6 +103,21 @@ Problem: when starting cvsfsd it aborts with following message:
 
 Solution: same as before.
 
+
+Problem: deleting a file does not remove the file. The old CVS version comes up.
+	 
+Solution: This works as designed. If the item you delete is a checked-out file
+          the CVS version pops up (but now read-only).
+	  If you want to edit it, you have to check-out the file again.
+
+
+Problem: renaming does only copy the file to the new position. The old CVS
+         version comes up at the old location.
+	 
+Solution: This works as designed. If the item you rename is a checked-out file
+          the CVS version pops up at the old location (remainig writeable).
+	  It only removes the old version if this was a local file.
+
 	       
 Usage (for root users):
 -----------------------

@@ -1,3 +1,30 @@
+2002-09-12  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.6
+
+2002-09-11  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/dir.c (cvsfs_rename): new - allow renaming of files
+	* cvsfs/proc.c (cvsfs_move): new - send move request to the daemon
+	* cvsfs/dir.c (cvsfs_rmdir): mark parent dentry dirty
+	* cvsfs/superblock.c (cvsfs_read_super): add error messages
+	* cvsfsd/main.c (main): add command 'move'
+	* cvsfsd/TModuleActionMove.*: new - support 'move' command
+	* cvsfsd/TInterface.h: add prototype for 'Move'
+	* cvsfsd/TInterfacePserver.h: add prototype for 'Move'
+	* cvsfsd/TInterfacePserver.cpp (Move): implement 'Move'
+	* cvsfsd/TCacheManager.*: support 'Move'
+	* cvsfsd/TCacheSystem*.*: support 'Move'
+	* cvsfsd/TCacheSystem*.*: support 'FullPath' to get absolute file path
+	* cvsfsd/TEntry.h: allow to change the name
+	
+2002-09-10  Petric Frank  <pfrank@gmx.de>
+	* cvsfsd/TModuleActionTruncfile.cpp (doit): streambuffer doubly
+	  instantiated. this results in a empty buffer when it comes to write.
+	  As result files can't be re-written.
+	* cvsfs/dir.c (cvsfs_readdir): problem was that not always the
+	  file attributes are re-read when a file was written. did now a
+	  workaround until better solution: set parent directory dentry also
+	  dirty.
+
 2002-09-10  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.5
 	* cvsfs/dir.c (cvsfs_lookup_validate): if no inode is allocated the
