@@ -1,3 +1,11 @@
+2002-09-19  Petric Frank  <pfrank@gmx.de>
+	* configure.in: increase version to 1.1.8
+
+2002-09-16  Petric Frank  <pfrank@gmx.de>
+	* cvsfs/dir.c, file.c: invert meaning of 'dirty'-flag in dentry->d_time
+	  As result newly created inodes are -per definition- dirty. This allows
+	  to remove the workaround from dd. 2002-09-11.
+
 2002-09-14  Petric Frank  <pfrank@gmx.de>
 	* configure.in: increase version to 1.1.7
 	* cvsfs/file.c (cvsfs_file_setattr): new - allow change file attributes

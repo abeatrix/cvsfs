@@ -1,3 +1,19 @@
+Version 1.1.8:
+Updated this file - some versions were missing.
+Revert a changes done in 1.1.5 regarding directory handling. Found a better
+solution.
+
+Version 1.1.7:
+File (local and checked-out ones) and directory attributes can be modified.
+Adaptions to compile cvsfs package with gcc 3.2.
+
+Version 1.1.6:
+Local files and directories (which are not in CVS) can now be renamed.
+
+Version 1.1.5:
+Internal preparations for check-in and update.
+Fix detection of dirty file entries.
+
 Version 1.1.4:
 Added IOCTL function for checkout of CVS files.
 Fix a pointer which was not reset at unmount.

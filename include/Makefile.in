@@ -67,7 +67,7 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
-noinst_HEADERS = cvsfs_ioctl.h
+noinst_HEADERS = cvsfs_errno.h cvsfs_ioctl.h
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
 HEADERS =  $(noinst_HEADERS)
