@@ -4,7 +4,7 @@ KERNEL_VERSION = $(shell uname -r)
 
 AM_INSTALL_PROGRAM_FLAGS = -m 644
 
-DEFS = -DMODULE -D__KERNEL__ -DLINUX
+DEFS = -DMODULE -D__KERNEL__ -DLINUX -DVERSION=\"$(VERSION)\"
 CFLAGS = -O3 -Wall -fomit-frame-pointer
 INCLUDES = -I/lib/modules/$(KERNEL_VERSION)/build/include
 
