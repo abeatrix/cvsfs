@@ -7,3 +7,6 @@ cvsmount_SOURCES = main.c
 
 install-exec-local:
 	ln -fs $(DESTDIR)$(bindir)/cvsmount $(DESTDIR)/sbin/mount.cvsfs 
+
+uninstall-local:
+	rm -f $(DESTDIR)/sbin/mount.cvsfs

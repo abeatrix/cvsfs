@@ -32,3 +32,6 @@ noinst_HEADERS = TCache.h TCacheVersionedFiles.h TCacheWorkFiles.h \
 
 install-exec-local:
 	cp ../cvsvfsd /etc/init.d/.
+
+uninstall-local:
+	rm -f /etc/init.d/cvsvfsd

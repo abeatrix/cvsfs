@@ -19,6 +19,11 @@ cvsfs_o_SOURCES = main.c devfs.c dir.c \
 noinst_HEADERS = cvsfs_config.h devfs.h dir.h \
 	file.h inode.h procfs.h proc.h superblock.h util.h
 
-install-exec-local:
+install-exec-hook:
 	depmod -a
+
+install-exec-local:
 	../makedevs
+
+uninstall-local:
+	../rmdevs
