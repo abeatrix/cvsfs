@@ -28,6 +28,7 @@
 
 #include "proc.h"
 #include "util.h"
+#include "../include/cvsfs_ioctl.h"
 
 //#define __DEBUG__
 
@@ -37,12 +38,12 @@
 static ssize_t cvsfs_file_write (struct file *, const char *, size_t, loff_t *);
 static int cvsfs_file_open (struct inode *, struct file *);
 static int cvsfs_file_release (struct inode *, struct file *);
-// static int cvsfs_file_ioctl (struct inode *, struct file *, unsigned int, unsigned long);
+static int cvsfs_file_ioctl (struct inode *, struct file *, unsigned int, unsigned long);
 
 struct file_operations cvsfs_file_operations = {
 						 read:		generic_file_read,
 						 write:		cvsfs_file_write,
-//						 ioctl:		cvsfs_file_ioctl,
+						 ioctl:		cvsfs_file_ioctl,
 						 mmap:		generic_file_mmap,
 						 open:		cvsfs_file_open,
 						 release:	cvsfs_file_release,
@@ -69,9 +70,43 @@ struct address_space_operations cvsfs_file_aops = {
 static int
 cvsfs_file_open (struct inode * inode, struct file * file)
 {
-  file->private_data = inode->i_sb->u.generic_sbp;
+  struct dentry *dentry = file->f_dentry;
+  struct super_block *sb = inode->i_sb;
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+  char namebuf[CVSFS_MAX_PATH];
+  char *version;
+  int ret = 0;
   
-  return 0;
+  file->private_data = inode->i_sb->u.generic_sbp;
+
+  if (cvsfs_get_name (dentry, namebuf, sizeof (namebuf)) < 0)
+    return -ENOMEM;
+
+  version = inode->u.generic_ip;
+  if ((version != NULL) && (strlen (version) > 0))
+  {						/* append version - if any */
+    if (sizeof (namebuf) < (strlen (namebuf) + strlen (version) + 3))
+      return -ENOMEM;
+      
+    strcat (namebuf, "@@");
+    strcat (namebuf, version);
+  }
+    
+#ifdef __DEBUG__    
+  printk (KERN_DEBUG "cvsfs: file_open %s with mode %d and flags %d\n", namebuf, file->f_mode, file->f_flags);
+#endif
+
+  if ((file->f_flags & O_TRUNC) != 0)
+  {
+#ifdef __DEBUG__    
+    printk (KERN_DEBUG "cvsfs: file_open truncate file\n");
+#endif
+    ret = cvsfs_truncate_file (info, namebuf);
+
+    dentry->d_time = 1;		/* file attributes dirty - reread them */
+  }
+  
+  return ret;
 }
 
 
@@ -92,7 +127,7 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   struct super_block *sb = inode->i_sb;
   struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
 //  struct cvsfs_fattr fattr;
-  char namebuf[512];
+  char namebuf[CVSFS_MAX_PATH];
   char *version;
   char *block;
   loff_t start;
@@ -105,7 +140,7 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
   version = inode->u.generic_ip;
   if ((version != NULL) && (strlen (version) > 0))
   {						/* append version - if any */
-    if (sizeof (namebuf) > (strlen (namebuf) + strlen (version) + 3))
+    if (sizeof (namebuf) < (strlen (namebuf) + strlen (version) + 3))
       return -ENOMEM;
       
     strcat (namebuf, "@@");
@@ -151,11 +186,128 @@ cvsfs_file_write (struct file * file, const char * buffer, size_t count, loff_t 
 
 
 
-//static int
-//cvsfs_file_ioctl (struct inode * inode, struct file * file, unsigned int, unsigned long)
-//{
-//  return 0;
-//}
+static int
+cvsfs_file_ioctl (struct inode * inode, struct file * file,
+		  unsigned int cmd, unsigned long arg)
+{
+  struct dentry *dentry = file->f_dentry;
+  struct super_block *sb = inode->i_sb;
+  struct cvsfs_sb_info *info = (struct cvsfs_sb_info *) sb->u.generic_sbp;
+  char namebuf[CVSFS_MAX_PATH];
+  char fullnamebuf[CVSFS_MAX_PATH];
+  int err = 0;
+  int size;
+  int command;
+  char *retval = NULL;
+  char *version;
+  limited_string *value = (limited_string *) arg;  
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: file_ioctl signature %d, function %d, direction %d, size %d\n",
+	  _IOC_TYPE (cmd), _IOC_NR (cmd), _IOC_DIR (cmd), _IOC_SIZE (cmd));
+#endif
+
+  if (_IOC_TYPE (cmd) != CVSFS_IOC_MAGIC)
+    return -ENOTTY;
+
+  if (_IOC_DIR (cmd) & _IOC_READ)
+    err = ! access_ok (VERIFY_WRITE, (void *) arg, _IOC_SIZE (cmd));
+  else
+    if (_IOC_DIR (cmd) & _IOC_WRITE)
+      err = ! access_ok (VERIFY_READ, (void *) arg, _IOC_SIZE (cmd));
+      
+  if (err)
+    return -EFAULT;
+
+  if (cvsfs_get_name (dentry, namebuf, sizeof (namebuf)) < 0)
+    return -ENOMEM;
+
+  strcpy (fullnamebuf, namebuf);
+
+#ifdef __DEBUG__
+  printk (KERN_DEBUG "cvsfs: file_ioctl request function for %s\n", fullnamebuf);
+#endif
+
+  version = inode->u.generic_ip;
+  if ((version != NULL) && (strlen (version) > 0))
+  {						/* append version - if any */
+    if (sizeof (fullnamebuf) < (strlen (fullnamebuf) + strlen (version) + 3))
+      return -ENOMEM;
+      
+    strcat (fullnamebuf, "@@");
+    strcat (fullnamebuf, version);
+  }
+
+  command = _IOC_NR (cmd);
+
+  switch (command)
+  {
+    case CVSFS_RESCAN:		/* re-read the data of the specific file */
+      if ((err = cvsfs_ioctl (info, command, fullnamebuf, &retval)) < 0)
+        break;
+	
+      dentry->d_time = 1;	/* request update */
+      break;
+
+    case CVSFS_GET_VERSION:	/* obtain the revision number */
+#ifdef __DEBUG__
+      printk (KERN_DEBUG "cvsfs: file_ioctl - GET_VERSION, value = %p\n", value);
+#endif
+      if ((value == NULL) || (value->string == NULL))
+        return -EFAULT;			/* faulty parameter */
+
+      if ((err = cvsfs_ioctl (info, command, fullnamebuf, &retval)) < 0)
+        break;
+
+      size = strlen (retval) + 1;
+      if (size > value->maxsize)
+	size = value->maxsize;
+      
+#ifdef __DEBUG__
+      printk (KERN_DEBUG "cvsfs: file_ioctl - version = >%s<\n", retval);
+#endif
+      
+      err = copy_to_user (value->string, version, size);
+
+      if (err == 0)
+        err = size;	/* return the number of bytes copied to the buffer */
+      break;
+
+    case CVSFS_CHECKOUT:	/* checkout a file (opt: revision number) */
+      if ((value == NULL) || (value->maxsize == 0))
+        err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
+      else
+      {
+        char *reqfile;
+	
+        size = value->maxsize + strlen (namebuf) + 3;
+	if (size > CVSFS_MAX_PATH)
+	  return -ENOMEM;
+        reqfile = kmalloc (size, GFP_KERNEL);
+	
+	strcpy (reqfile, namebuf);
+	strcat (reqfile, "@@");
+	copy_from_user (&reqfile[strlen (reqfile)], value->string, size);
+        err = cvsfs_ioctl (info, command, fullnamebuf, &retval);
+	kfree (reqfile);
+      }
+
+      if (err < 0)
+        break;
+
+      err = simple_strtol (retval, NULL, 0);	/* outcome of checkout */
+
+      break;
+      
+    default:
+      return -ENOTTY;
+  }
+
+  if (retval != NULL)
+    kfree (retval);
+
+  return err;
+}
 
 
 
@@ -186,7 +338,7 @@ cvsfs_file_readpage (struct file * file, struct page * page)
   loff_t offset;
   size_t count;
   int result;
-  char name[512];
+  char name[CVSFS_MAX_PATH];
 
   if (cvsfs_get_name (dentry, name, sizeof (name)) != 0)
     return -EIO;
